@@ -1,0 +1,8 @@
+httpx
+loguru
+aiofiles
+python-magic
+imagehash
+pillow
+beautifulsoup4
+pandas
