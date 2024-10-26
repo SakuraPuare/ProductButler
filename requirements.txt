@@ -6,3 +6,8 @@ imagehash
 pillow
 beautifulsoup4
 pandas
+openpyxl
+lxml
+
+pyside6
+PySide6-Fluent-Widgets[full]

@@ -1,14 +1,17 @@
-import imagehash
-import io
-import os
-import pathlib
 import re
-from PIL import Image
-from bs4 import BeautifulSoup
-from difflib import SequenceMatcher
+
+post_re = re.compile(r'主图')
+detail_re = re.compile(r'详情')
+image_re = re.compile(r'images')
+
+large_bound = 1024 * 1024 * 2
 
 
 def is_image(byte: bytes) -> bool:
+    import io
+
+    from PIL import Image
+
     try:
         Image.open(io.BytesIO(byte))
         return True
@@ -17,89 +20,135 @@ def is_image(byte: bytes) -> bool:
 
 
 def get_imagehash(byte: bytes) -> str:
+    import io
+
+    import imagehash
+    from PIL import Image
+
     img = Image.open(io.BytesIO(byte))
     return str(imagehash.average_hash(img))
 
 
-post_re = re.compile(r'主图')
-detail_re = re.compile(r'详情')
-image_re = re.compile(r'images')
-
-
-def custom_sort(file_path: pathlib.Path):
-    s = ' '.join(file_path.parts[3:])
-    # 使用正则表达式从字符串中提取数字部分
-    find = re.findall(r'\d+', s)  # list[str]
-    if find:
-        # 返回找到的数字作为排序关键字
-        remain = [s[:s.find(i)] for i in find]
-        remain.append(s[s.find(find[-1]) + len(find[-1]):])
-        return list(map(int, find)) + list(map(ord, list(''.join(remain))))
-    # 如果没有找到数字，则返回一个大数字，确保这些条目排在后面
-    return list(map(ord, list(s)))
+def custom_sort(file_path: 'pathlib.Path'):
+    part = file_path.parts
+    sort = []
+    for p in part:
+        find = re.findall(r'\d+', p)
+        if find:
+            remain = filter(lambda x: not x.isdigit(), re.split(r'\d+', p))
+            sort.append(list(map(int, find)) +
+                        list(map(ord, list(''.join(remain)))))
+        else:
+            sort.append(list(map(ord, p)))
+    return sort
 
 
 def is_square_image(file_path) -> bool:
+    from PIL import Image
+
     img = Image.open(file_path)
-    return abs(img.width / img.height - 1) < 0.1
+    return img.height == img.width
 
 
-def glob_file_in_folder(folder: pathlib.Path) -> tuple[list, list]:
-    file_list = find_files(folder)
-    # filter image smaller than 1mb
-    file_list = filter(lambda x: pathlib.Path(
-        x).stat().st_size <= 1024 * 1024 * 2, file_list)
-    file_list = [pathlib.Path(file) for file in file_list]
-    byte_list = [file.read_bytes() for file in file_list]
-    is_image_list = [i for i in map(is_image, byte_list)]
+def resize_to_large_bound(file_path: 'pathlib.Path'):
+    from PIL import Image
 
-    image_list = list(map(lambda y: y[0], filter(
-        lambda x: x[1], zip(file_list, is_image_list))))
-    hash_list = list(map(lambda y: get_imagehash(y[0]), filter(
-        lambda x: x[1], zip(byte_list, is_image_list))))
+    img = Image.open(file_path)
+    while file_path.stat().st_size > large_bound:
+        img = img.resize((int(img.width * 0.9), int(img.height * 0.9)))
+        img.save(file_path)
+
+
+def get_ratio(file_path: 'pathlib.Path'):
+    from PIL import Image
+
+    img = Image.open(file_path)
+    return img.height / img.width
+
+
+def glob_file_in_folder(folder: 'pathlib.Path') -> tuple[list, list]:
+    import pathlib
+
+    import imagehash
+
+    file_list = [pathlib.Path(x) for x in find_files(folder)]
+    file_stats = {file: file.stat().st_size for file in file_list}
+
+    small_file_list = [
+        file for file in file_list if file_stats[file] <= large_bound]
+    large_file_list = [
+        file for file in file_list if file_stats[file] > large_bound]
+
+    byte_list = [file.read_bytes() for file in small_file_list]
+    is_image_list = [is_image(bytes_) for bytes_ in byte_list]
+
+    image_list = [file for file, is_img in zip(
+        small_file_list, is_image_list) if is_img]
+    hash_list = [get_imagehash(bytes_) for bytes_, is_img in zip(
+        byte_list, is_image_list) if is_img]
+    # with ProcessPoolExecutor(max_workers=4) as executor:
+    #     hash_list = list(executor.map(get_imagehash, [bytes_ for bytes_, is_img in zip(byte_list, is_image_list) if is_img]))
+
 
     hash_map = {}
     for file, hash_ in zip(image_list, hash_list):
-        flag = False
-        dst_hash = None
-        for hash_a in hash_map.keys():
-            # compute the similarity between two hash
-            similarity = imagehash.hex_to_hash(hash_a) - \
-                         imagehash.hex_to_hash(hash_)
+        for hash_a, (existing_file, size) in hash_map.items():
+            similarity = imagehash.hex_to_hash(
+                hash_a) - imagehash.hex_to_hash(hash_)
             if abs(similarity) < 5:
-                flag = True
-                dst_hash = hash_a
+                if size < file_stats[file]:
+                    hash_map[hash_a] = (file, file_stats[file])
                 break
-        if not flag:
-            hash_map[hash_] = (file, file.stat().st_size)
         else:
-            if hash_map[dst_hash][1] < file.stat().st_size:
-                hash_map[dst_hash] = (file, file.stat().st_size)
+            hash_map[hash_] = (file, file_stats[file])
 
-    file_set = [file for file, _ in hash_map.values()]
+    file_set = {file for file, _ in hash_map.values()}
 
-    posts = list(filter(lambda x: post_re.search(str(x)), file_set))
-    details = list(filter(lambda x: detail_re.search(
-        str(x)) and x not in posts, file_set))
-
-    details += list(filter(lambda x: image_re.search(str(x))
-                                     and x not in posts, file_set))
-    posts += list(filter(lambda x: is_square_image(x)
-                                   and x not in details, file_set))
-    posts = list(set(posts))
-    details = list(set(details))
+    posts = {file for file in file_set if post_re.search(str(file))}
+    details = {file for file in file_set if detail_re.search(
+        str(file)) and file not in posts}
+    details.update(file for file in file_set if image_re.search(
+        str(file)) and file not in posts)
 
     if not posts and details:
-        posts = list(set(file_set).difference(set(details)))
-    if not details and posts:
-        details = list(set(file_set).difference(set(posts)))
+        posts = file_set - details
+    elif not details and posts:
+        details = file_set - posts
 
-    assert posts and details, folder
+    posts.update(file for file in file_set if is_square_image(
+        file) and file not in details)
+    if not details and posts:
+        details = file_set - posts
+
+    # filter height / width > 3 in details
+    if len(details) > 1:
+        details = {file for file in details if get_ratio(file) < 3}
+
+    if not posts or not details:
+        large_file_list.sort(key=lambda file: file_stats[file])
+        if not posts:
+            posts = {file for file in large_file_list if is_square_image(
+                file) and file not in details}
+
+        for post in posts:
+            resize_to_large_bound(post)
+
+        if not details:
+            large_file_list_not_squares = {
+                file for file in large_file_list if not is_square_image(file) and file not in posts}
+            if len(large_file_list_not_squares) > 1:
+                details = {
+                    file for file in large_file_list_not_squares if get_ratio(file) < 3}
+
+            for detail in details:
+                resize_to_large_bound(detail)
 
     return sorted(posts, key=custom_sort), sorted(details, key=custom_sort)
 
 
 def find_closest_string(target, string_list):
+    from difflib import SequenceMatcher
+
     closest_idx = -1
     closest_score = 0.0
     for idx, string in enumerate(string_list):
@@ -111,11 +160,13 @@ def find_closest_string(target, string_list):
 
 
 def parse_html_options(html):
+    from bs4 import BeautifulSoup
+
     soup = BeautifulSoup(html, 'lxml')
-    options = soup.find_all('option')
+    options = soup.find_all('dd')
     result = {}
     for option in options:
-        value = option.get('value')
+        value = option.get('lay-value')
         if not value:
             continue
 
@@ -128,9 +179,46 @@ def parse_html_options(html):
 
 
 def find_files(directory):
+    import os
+
     file_paths = []
     for root, dirs, files in os.walk(directory):
         for file in files:
             file_paths.append(os.path.join(root, file))
             # loguru.logger.debug(file_paths[-1])
     return file_paths
+
+
+def save_cookies(httpx_cookies: 'httpx.Cookies', file_path: str = "cookies.json"):
+    import json
+
+    import httpx
+    with open(file_path, 'w') as f:
+        json.dump(dict(httpx_cookies), f)
+
+
+def load_cookies(file_path: str = "cookies.json") -> 'httpx.Cookies':
+    import json
+    import os
+
+    import httpx
+
+    if not os.path.exists(file_path):
+        return httpx.Cookies()
+
+    with open(file_path, 'r') as f:
+        return httpx.Cookies(json.load(f))
+
+
+def get_category_level_1(category: 'Category', string: str):
+    import json
+    items = list(category.keys())
+    idx = find_closest_string(string, items)
+    return items[idx], category[items[idx]].get("level")
+
+
+def get_category_level_2(category: 'Category', level_1: str, string: str):
+    import json
+    items = list(category[level_1]["children"].keys())
+    idx = find_closest_string(string, items)
+    return items[idx], category[level_1]["children"][items[idx]].get("level")

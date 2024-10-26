@@ -1,9 +1,13 @@
+import pathlib
+import time
+
 import aiofiles
 import magic
-import pathlib
+from bs4 import BeautifulSoup
 
-from https import get, post
-from utils import parse_html_options
+from https import get, post, reload_cookies
+from typehint import Category
+from utils import load_cookies, parse_html_options, save_cookies
 
 default_data = {
     "buyNotice": "<p>购买须知</p>",
@@ -91,58 +95,103 @@ async def upload_file(types: str, path: pathlib.Path) -> str:
     return "https://hlt-cdn.cyscience.cn/" + response.json().get("url")
 
 
-async def get_category() -> dict:
-    category_list = {
-        "米面粮油": {"level": "1", "children": []},
-        "食品零食": {"level": "5", "children": []},
-        "生鲜水果": {"level": "8", "children": []},
-        "精致礼盒": {"level": "10", "children": []},
-        "五谷杂粮": {"level": "18", "children": []},
-        "滋补保健": {"level": "26", "children": []},
-        "个护清洁": {"level": "27", "children": []},
-        "日用百货": {"level": "39", "children": []},
-        "本地生活": {"level": "51", "children": []},
-        "家用电器": {"level": "52", "children": []},
-        "厨房小电": {"level": "62", "children": []},
-        "手机数码": {"level": "96", "children": []},
-        "美妆护肤": {"level": "138", "children": []},
-        "母婴亲子": {"level": "243", "children": []},
-        "酒水饮料": {"level": "300221", "children": []},
-        "运动户外": {"level": "300230", "children": []},
-        "文具用品": {"level": "300246", "children": []},
-        "测试二级分类": {"level": "300258", "children": []},
-        "1234": {"level": "300259", "children": []},
-        "面粉挂面": {"level": "300266", "children": []},
-        "水饮冲调": {"level": "300270", "children": []},
-    }
-    data = {}
-    for category, v in category_list.items():
-        ids = v.get("level")
+async def get_captcha_image():
+    import httpx
+    response = httpx.get(
+        "http://hlt-admin.honglitong.cn/login/verify.html", params={"t": time.time()})
+    with open("verify.jpg", "wb") as f:
+        f.write(response.content)
+    save_cookies(response.cookies)
 
+
+async def login(account: str, password: str, captcha: str):
+    import httpx
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Referer': 'http://hlt-admin.honglitong.cn/login',
+    }
+    cookies = load_cookies()
+
+    data = {
+        'username': account,
+        'pwd': password,
+        'pcode': captcha,
+    }
+
+    response = httpx.post('http://hlt-admin.honglitong.cn/login/ajax/auth',
+                          cookies=cookies, headers=headers, data=data, verify=False)
+    cookies.update(response.cookies)
+
+    if response.text:
+        response = response.json()
+        assert response.get('success'), response.get('msg')
+
+    response = httpx.get(
+        'http://hlt-admin.honglitong.cn/login/doLogin', cookies=cookies, headers=headers)
+    cookies.update(response.cookies)
+    save_cookies(cookies)
+    reload_cookies()
+
+
+async def test_login():
+    await get("http://hlt-admin.honglitong.cn/goods/add/page")
+
+
+async def get_category() -> Category:
+    response = await get("http://hlt-admin.honglitong.cn/goods/add/page")
+
+    category_list = {}
+    level_1_soup = BeautifulSoup(response.text, 'html.parser')
+    level_1_options = level_1_soup.find_all('option')
+    for option_l1 in level_1_options:
+        value_l1 = option_l1.get('value')
+        if not value_l1:
+            continue
+
+        child = {}
         params = {
             "level": "2",
-            "pId": ids,
+            "pId": value_l1,
         }
-
         response = await get(
             "http://hlt-admin.honglitong.cn/goods/ajax/load-category",
             params=params,
         )
 
-        parse = parse_html_options(response.text)
+        level_2_soup = BeautifulSoup(response.text, 'lxml')
+        level_2_options = level_2_soup.find_all('option')
+        for option_l2 in level_2_options:
+            value_l2 = option_l2.get('value')
+            if not value_l2:
+                continue
 
-        vv = {"level": ids, "children": parse}
-        data[category] = vv
-    return data
+            child[option_l2.text.strip()] = {
+                'level': value_l2,
+                'children': {}
+            }
+
+        category_list[option_l1.text.strip()] = {
+            'level': value_l1,
+            'children': child
+        }
+
+    with open("category.json", "w") as f:
+        import json
+        json.dump(category_list, f, ensure_ascii=False, indent=4)
+
+    return category_list
 
 
 if __name__ == "__main__":
     import asyncio
-    import json
 
-    cat = asyncio.run(get_category())
-    with open("category.json", "w") as f:
-        json.dump(cat, f, ensure_ascii=False, indent=4)
+    asyncio.run(get_captcha_image())
+
+    # import json
+
+    # cat = asyncio.run(get_category())
+    # with open("category.json", "w") as f:
+    #     json.dump(cat, f, ensure_ascii=False, indent=4)
 
     # resp = asyncio.run(upload_file('poster', pathlib.Path('企悦汇选品1038-1197 (2)/未命名文件夹 2/1038.儿童内衣专用洗衣液300ml/主图/81688faeabc9cbd0a1d92ddd3df1887.jpg')))
     # pass
