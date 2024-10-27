@@ -122,7 +122,7 @@ def glob_file_in_folder(folder: 'pathlib.Path') -> tuple[list, list]:
 
     # filter height / width > 3 in details
     if len(details) > 1:
-        details = {file for file in details if get_ratio(file) < 3}
+        details = {file for file in details if get_ratio(file) < 6}
 
     if not posts or not details:
         large_file_list.sort(key=lambda file: file_stats[file])
@@ -138,7 +138,9 @@ def glob_file_in_folder(folder: 'pathlib.Path') -> tuple[list, list]:
                 file for file in large_file_list if not is_square_image(file) and file not in posts}
             if len(large_file_list_not_squares) > 1:
                 details = {
-                    file for file in large_file_list_not_squares if get_ratio(file) < 3}
+                    file for file in large_file_list_not_squares if get_ratio(file) < 6}
+            else:
+                details = large_file_list_not_squares
 
             for detail in details:
                 resize_to_large_bound(detail)

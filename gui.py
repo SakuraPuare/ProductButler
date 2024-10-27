@@ -84,7 +84,7 @@ class FileForm(QWidget):
         # Set the main window properties
         self.setWindowTitle('File Selector')
         self.resize(400, 200)
-    
+
     def enter(self):
         asyncio.ensure_future(self._enter())
 
@@ -228,7 +228,13 @@ class DataForm(QWidget):
         self.initUI()
 
     def upload(self):
+        if self.is_upload:
+            InfoBar.error(title="Error", content="正在上传中，请稍等", parent=self)
+            return
+
+        self.is_upload = True
         asyncio.ensure_future(self._upload())
+        self.is_upload = False
 
     async def _upload(self):
         if self.loc == -1 or \
@@ -240,8 +246,8 @@ class DataForm(QWidget):
         brand = self.table_widget.item(0, 3).text()  # 品牌
         goods_name = self.table_widget.item(0, 4).text()  # 品名
         weight = self.weight_edit.text()  # 重量
-        market_price = self.table_widget.item(0, 6).text()  # 含税运一件代发价
-        bid_price = self.table_widget.item(0, 7).text()  # 对广行达结算价
+        bid_price = self.table_widget.item(0, 6).text()  # 对广行达结算价
+        market_price = self.table_widget.item(0, 7).text()  # 含税运一件代发价
 
         matched = (self.matched_level_1_name != self.current_level_1_name,
                    self.matched_level_2_name != self.current_level_2_name)
@@ -342,9 +348,9 @@ class DataForm(QWidget):
 
         # match the category
         self.matched_level_1_name, self.level_1_index = get_category_level_1(self.category,
-            row["一级分类"])
+                                                                             row["一级分类"])
         self.matched_level_2_name, self.level_2_index = get_category_level_2(self.category,
-            self.matched_level_1_name, row["二级分类"])
+                                                                             self.matched_level_1_name, row["二级分类"])
         # update combobox
         self.level_1_select.setCurrentText(self.matched_level_1_name)
         self.level_2_select.setCurrentText(self.matched_level_2_name)
@@ -466,13 +472,13 @@ class DataForm(QWidget):
 
         header_layout.addWidget(self.reset_button)
         header_layout.addWidget(self.load_button)
+        header_layout.addWidget(self.upload_button)
         header_layout.addWidget(self.start_edit)
         header_layout.addWidget(self.end_edit)
         header_layout.addWidget(self.jump_button)
         header_layout.addWidget(self.jump_edit)
         header_layout.addWidget(self.pre_button)
         header_layout.addWidget(self.next_button)
-        header_layout.addWidget(self.upload_button)
 
         body_layout = VBoxLayout(self)
 
@@ -597,13 +603,13 @@ class DataForm(QWidget):
             self.level_2_select.addItem(i)
 
         self.current_level_1_name, self.level_1_index = get_category_level_1(self.category,
-            level_1_name)
+                                                                             level_1_name)
 
     def level_2_select_change(self):
         level_1_name = self.level_1_select.currentText()
         level_2_name = self.level_2_select.currentText()
         self.current_level_2_name, self.level_2_index = get_category_level_2(self.category,
-            level_1_name, level_2_name)
+                                                                             level_1_name, level_2_name)
 
     def pre(self):
         if self.loc == -1:
@@ -617,6 +623,7 @@ class DataForm(QWidget):
         self.updateUI()
 
         InfoBar.info(title="Success", content="已经切换到上一条数据", parent=self)
+        loguru.logger.info(f"当前序号: {self.data.loc[self.loc]['序号']}")
 
     def nxt(self):
         if self.loc == -1:
@@ -624,12 +631,14 @@ class DataForm(QWidget):
 
         if self.loc + 1 >= len(self.data):
             InfoBar.error(title="Error", content="已经是最后一条数据", parent=self)
+            loguru.logger.info("已经是最后一条数据")
             return
 
         self.loc += 1
         self.updateUI()
 
         InfoBar.info(title="Success", content="已经切换到下一条数据", parent=self)
+        loguru.logger.info(f"当前序号: {self.data.loc[self.loc]['序号']}")
 
     def jmp(self, idx):
         if isinstance(idx, str):
