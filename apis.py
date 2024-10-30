@@ -1,8 +1,8 @@
+import mimetypes
 import pathlib
 import time
 
 import aiofiles
-import magic
 from bs4 import BeautifulSoup
 
 from https import get, post, reload_cookies
@@ -74,12 +74,12 @@ async def add_goods(
 
 async def upload_file(types: str, path: pathlib.Path) -> str:
     # byte = path.read_bytes()
-    mime = magic.Magic(mime=True)
+    mime_type, _ = mimetypes.guess_type(path)
     async with aiofiles.open(path, "rb") as f:
         byte = await f.read()
     files = {
         # 'file': ('驱蚊酯驱蚊液65ml_18.jpg', '', 'image/jpeg'),
-        "file": (path.name, byte, mime.from_file(path)),
+        "file": (path.name, byte, mime_type),
         "service": (None, f"goods/gys/{types}"),
     }
 

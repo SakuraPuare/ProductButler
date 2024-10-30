@@ -89,7 +89,6 @@ def glob_file_in_folder(folder: 'pathlib.Path') -> tuple[list, list]:
     # with ProcessPoolExecutor(max_workers=4) as executor:
     #     hash_list = list(executor.map(get_imagehash, [bytes_ for bytes_, is_img in zip(byte_list, is_image_list) if is_img]))
 
-
     hash_map = {}
     for file, hash_ in zip(image_list, hash_list):
         for hash_a, (existing_file, size) in hash_map.items():

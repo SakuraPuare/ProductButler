@@ -1,13 +1,11 @@
 import asyncio
-import json
+import os
 import pathlib
 import sys
 import time
 
 import loguru
 import pandas as pd
-import PySide6.QtAsyncio as QtAsyncio
-import qasync
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
@@ -18,7 +16,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QWidget,
 )
-from qasync import QEventLoop, asyncSlot
+from qasync import QEventLoop
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
@@ -39,7 +37,6 @@ from apis import (
     test_login,
     upload_file,
 )
-from typehint import Category
 from utils import get_category_level_1, get_category_level_2, glob_file_in_folder
 
 
@@ -160,6 +157,7 @@ class LoginForm(QWidget):
         # Create a label for displaying the captcha image
         self.captcha_label = BodyLabel(self)
         asyncio.ensure_future(self.load_captcha_image())
+        self.captcha_label.mousePressEvent = self.reload
 
         # Create a login button
         login_button = PushButton("Login", self)
@@ -177,10 +175,10 @@ class LoginForm(QWidget):
         self.setWindowTitle('Login Window')
         # self.setGeometry(300, 300, 400, 300)
 
-    async def load_captcha_image(self):
-        # Load a captcha image from the local filesystem
-        options = QFileDialog.Options()
+    def reload(self, event):
+        asyncio.ensure_future(self.load_captcha_image())
 
+    async def load_captcha_image(self):
         try:
             await get_captcha_image()
         except:
@@ -214,7 +212,7 @@ class LoginForm(QWidget):
 class DataForm(QWidget):
     def __init__(self, path_data):
         super().__init__()
-
+        self.is_upload = False
         self.file_name, self.image_path = path_data
 
         self.image_folder_list = list(pathlib.Path(self.image_path).iterdir())
@@ -232,12 +230,11 @@ class DataForm(QWidget):
             InfoBar.error(title="Error", content="正在上传中，请稍等", parent=self)
             return
 
-        self.is_upload = True
         asyncio.ensure_future(self._upload())
-        self.is_upload = False
 
     async def _upload(self):
-        if self.loc == -1 or \
+        self.is_upload = True
+        if not image_folder or self.loc == -1 or \
                 not self.posts or not self.details:
             InfoBar.error(title="Error", content="图片未载入", parent=self)
             return
@@ -304,8 +301,9 @@ class DataForm(QWidget):
             self.nxt()
             loguru.logger.info(f"[{ids}] success")
         finally:
-            with open("black_list.txt", "a") as f:
+            with open("black_list.txt", "a+") as f:
                 f.write(f"{ids}\n")
+            self.is_upload = False
 
     def reset(self):
         asyncio.ensure_future(self._reset())
@@ -379,6 +377,9 @@ class DataForm(QWidget):
             return
 
     def update_image_path_list(self):
+        self.poster_url_list.clear()
+        self.detail_url_list.clear()
+
         idx = self.data.loc[self.loc]["序号"]
         image_folder = [
             i for i in self.image_folder_list if i.name.startswith(str(idx))]
@@ -389,19 +390,22 @@ class DataForm(QWidget):
 
         image_folder = image_folder[-1]
 
-        self.poster_url_list.clear()
-        self.detail_url_list.clear()
-
         start_time = time.time()
         self.posts, self.details = glob_file_in_folder(image_folder)
         loguru.logger.info(
             f"glob_file_in_folder cost {time.time() - start_time:.2f}s")
 
         for i in self.posts:
-            self.poster_url_list.addItem(str(i).split(str(int(idx)))[-1])
+            i = str(i)
+            item_name = i[i.find(str(int(idx))) + len(str(idx)):]
+            self.poster_url_list.addItem(item_name)
+            # self.poster_url_list.addItem(str(i).split(str(int(idx)))[-1])
 
         for i in self.details:
-            self.detail_url_list.addItem(str(i).split(str(int(idx)))[-1])
+            i = str(i)
+            item_name = i[i.find(str(int(idx))) + len(str(idx)):]
+            self.detail_url_list.addItem(item_name)
+            # self.detail_url_list.addItem(str(i).split(str(int(idx)))[-1])
 
         pass
 
@@ -427,6 +431,10 @@ class DataForm(QWidget):
     async def initData(self):
         # flush category
         self.category = await get_category()
+
+        if not os.path.exists("black_list.txt"):
+            with open("black_list.txt", "w") as f:
+                f.write("")
 
         with open("black_list.txt", "r") as f:
             self.black_list: list[int] = list(map(int, f.readlines()))
@@ -593,7 +601,7 @@ class DataForm(QWidget):
 
         # Set layout to the widget
         self.setLayout(layout)
-        self.resize(1200, 300)
+        self.resize(1200, 800)
 
     def level_1_select_change(self):
         level_1_name = self.level_1_select.currentText()
