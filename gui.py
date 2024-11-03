@@ -6,6 +6,7 @@ import time
 
 import loguru
 import pandas as pd
+from pandas import DataFrame
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
@@ -24,6 +25,7 @@ from qfluentwidgets import (
     InfoBar,
     LineEdit,
     ListWidget,
+    PasswordLineEdit,
     PushButton,
     TableWidget,
     VBoxLayout,
@@ -44,9 +46,16 @@ class FileForm(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.initUI()
+        self.image_path = None
+        self.file_name = None
+        self.image_path_button = None
+        self.file_name_button = None
+        self.image_label = None
+        self.excel_label = None
+        self.enter_button = None
+        self.init_ui()
 
-    def initUI(self):
+    def init_ui(self):
         # Create layout
         layout = VBoxLayout(self)
 
@@ -79,7 +88,7 @@ class FileForm(QWidget):
         self.setLayout(layout)
 
         # Set the main window properties
-        self.setWindowTitle('File Selector')
+        self.setWindowTitle("File Selector")
         self.resize(400, 200)
 
     def enter(self):
@@ -107,29 +116,33 @@ class FileForm(QWidget):
             self.data_form.show()
 
     def select_excel_file(self):
-        options = QFileDialog.Options()
         self.file_name, _ = QFileDialog.getOpenFileName(
-            self, "选择Excel文件", "", "Excel Files (*.xlsx);;All Files (*)", options=options)
+            self,
+            "选择Excel文件",
+            "",
+            "Excel Files (*.xlsx);;All Files (*)",
+        )
         if self.file_name:
             self.excel_label.setText(f"已选择Excel文件: {self.file_name}")
 
     def select_image_directory(self):
-        options = QFileDialog.Options()
-        self.image_path = QFileDialog.getExistingDirectory(
-            self, "选择图片文件夹", options=options)
+        self.image_path = QFileDialog.getExistingDirectory(self, "选择图片文件夹")
         if self.image_path:
-            self.image_label.setText(
-                f"已选择图片文件夹: {self.image_path}")
+            self.image_label.setText(f"已选择图片文件夹: {self.image_path}")
 
 
 class LoginForm(QWidget):
     def __init__(self, path_data):
         super().__init__()
+        self.captcha_label = None
+        self.captcha_input = None
+        self.password_input = None
+        self.account_input = None
         self.path_data = path_data
 
-        self.initUI()
+        self.init_ui()
 
-    def initUI(self):
+    def init_ui(self):
         # Create layout
         layout = VBoxLayout(self)
 
@@ -139,20 +152,19 @@ class LoginForm(QWidget):
         # Create input fields for account and password
         self.account_input = LineEdit(self)
 
-        self.account_input.setPlaceholderText('输入账号')
+        self.account_input.setPlaceholderText("输入账号")
 
-        self.password_input = LineEdit(self)
+        self.password_input = PasswordLineEdit(self)
 
-        self.password_input.setPlaceholderText('输入密码')
-        self.password_input.setEchoMode(LineEdit.Password)
+        self.password_input.setPlaceholderText("输入密码")
 
         self.captcha_input = LineEdit(self)
-        self.captcha_input.setPlaceholderText('输入验证码')
+        self.captcha_input.setPlaceholderText("输入验证码")
 
         # Add input fields to the form layout
-        form_layout.addRow('账号:', self.account_input)
-        form_layout.addRow('密码:', self.password_input)
-        form_layout.addRow('验证码:', self.captcha_input)
+        form_layout.addRow("账号:", self.account_input)
+        form_layout.addRow("密码:", self.password_input)
+        form_layout.addRow("验证码:", self.captcha_input)
 
         # Create a label for displaying the captcha image
         self.captcha_label = BodyLabel(self)
@@ -172,19 +184,20 @@ class LoginForm(QWidget):
         self.setLayout(layout)
 
         # Set the main window properties
-        self.setWindowTitle('Login Window')
+        self.setWindowTitle("Login Window")
         # self.setGeometry(300, 300, 400, 300)
 
-    def reload(self, event):
+    def reload(self, _event):
         asyncio.ensure_future(self.load_captcha_image())
 
     async def load_captcha_image(self):
         try:
             await get_captcha_image()
-        except:
+        except Exception as e:
             # If the captcha image cannot be loaded, warn the user
-            InfoBar.warning(parent=self, title="Warning",
-                            content="验证码加载失败，请重试")
+            InfoBar.warning(
+                parent=self, title="Warning", content=f"验证码加载失败，请重试 {e}"
+            )
 
         pixmap = QPixmap("verify.jpg")
         self.captcha_label.setPixmap(pixmap)
@@ -212,6 +225,18 @@ class LoginForm(QWidget):
 class DataForm(QWidget):
     def __init__(self, path_data):
         super().__init__()
+        self.table_data = None
+        self.black_list = None
+        self.category = None
+        self.details = None
+        self.posts = None
+        self.image_folder = None
+        self.level_2_index = None
+        self.matched_level_2_name = None
+        self.level_1_index = None
+        self.matched_level_1_name = None
+        self.end = None
+        self.start = None
         self.is_upload = False
         self.file_name, self.image_path = path_data
 
@@ -222,8 +247,8 @@ class DataForm(QWidget):
         self.loc = -1
 
     async def initialize(self):
-        await self.initData()
-        self.initUI()
+        await self.init_data()
+        self.init_ui()
 
     def upload(self):
         if self.is_upload:
@@ -234,8 +259,12 @@ class DataForm(QWidget):
 
     async def _upload(self):
         self.is_upload = True
-        if not image_folder or self.loc == -1 or \
-                not self.posts or not self.details:
+        if (
+            not self.image_folder
+            or self.loc == -1
+            or not self.posts
+            or not self.details
+        ):
             InfoBar.error(title="Error", content="图片未载入", parent=self)
             return
 
@@ -246,28 +275,46 @@ class DataForm(QWidget):
         bid_price = self.table_widget.item(0, 6).text()  # 对广行达结算价
         market_price = self.table_widget.item(0, 7).text()  # 含税运一件代发价
 
-        matched = (self.matched_level_1_name != self.current_level_1_name,
-                   self.matched_level_2_name != self.current_level_2_name)
+        matched = (
+            self.matched_level_1_name != self.current_level_1_name,
+            self.matched_level_2_name != self.current_level_2_name,
+        )
         if any(matched):
             raw_level_1 = self.raw_level_1.text()
             raw_level_2 = self.raw_level_2.text()
-            dialog = Dialog("你修改了分类信息", "你修改了分类信息，是否要以此修改后续所有的内容？\n\n" +
-                            f"   '{raw_level_1}' -> '{self.current_level_1_name}' \n" +
-                            f"   '{raw_level_2}' -> '{self.current_level_2_name}' ", parent=self)
+            dialog = Dialog(
+                "你修改了分类信息",
+                "你修改了分类信息，是否要以此修改后续所有的内容？\n\n"
+                + f"   '{raw_level_1}' -> '{self.current_level_1_name}' \n"
+                + f"   '{raw_level_2}' -> '{self.current_level_2_name}' ",
+                parent=self,
+            )
 
             if dialog.exec() == Dialog.Accepted:
                 if all(matched):
-                    self.data.loc[(self.data["一级分类"] == raw_level_1) & (
-                        self.data["二级分类"] == raw_level_2), "一级分类"] = self.current_level_1_name
-                    self.data.loc[(self.data["一级分类"] == self.current_level_1_name) & (
-                        self.data["二级分类"] == raw_level_2), "二级分类"] = self.current_level_2_name
+                    self.table_data.loc[
+                        (self.table_data["一级分类"] == raw_level_1)
+                        & (self.table_data["二级分类"] == raw_level_2),
+                        "一级分类",
+                    ] = self.current_level_1_name
+                    self.table_data.loc[
+                        (self.table_data["一级分类"] == self.current_level_1_name)
+                        & (self.table_data["二级分类"] == raw_level_2),
+                        "二级分类",
+                    ] = self.current_level_2_name
                 else:
                     if matched[0]:
-                        self.data.loc[(self.data["一级分类"] == raw_level_1) & (
-                            self.data["二级分类"] == raw_level_2), "一级分类"] = self.current_level_1_name
+                        self.table_data.loc[
+                            (self.table_data["一级分类"] == raw_level_1)
+                            & (self.table_data["二级分类"] == raw_level_2),
+                            "一级分类",
+                        ] = self.current_level_1_name
                     if matched[1]:
-                        self.data.loc[(self.data["一级分类"] == raw_level_1) & (
-                            self.data["二级分类"] == raw_level_2), "二级分类"] = self.current_level_2_name
+                        self.table_data.loc[
+                            (self.table_data["一级分类"] == raw_level_1)
+                            & (self.table_data["二级分类"] == raw_level_2),
+                            "二级分类",
+                        ] = self.current_level_2_name
 
         InfoBar.info(title="上传中", content="请稍等", parent=self)
 
@@ -295,7 +342,7 @@ class DataForm(QWidget):
 
         except Exception as e:
             InfoBar.error(title="Error", content=str(e), parent=self)
-            loguru.logger.error(f'[{ids}] {str(e)}')
+            loguru.logger.error(f"[{ids}] {str(e)}")
             return
         else:
             self.nxt()
@@ -311,14 +358,16 @@ class DataForm(QWidget):
     async def _reset(self):
         self.image_folder_list = list(pathlib.Path(self.image_path).iterdir())
 
-        await self.initData()
+        await self.init_data()
         self.load()
 
     def load(self):
         self.start = self.start_edit.text()
         self.end = self.end_edit.text()
         if not self.start or not self.end:
-            InfoBar.error(title="Error", content="请输入开始序号和结束序号", parent=self)
+            InfoBar.error(
+                title="Error", content="请输入开始序号和结束序号", parent=self
+            )
             return
         if not self.start.isdigit() or not self.end.isdigit():
             InfoBar.error(title="Error", content="请输入数字", parent=self)
@@ -334,21 +383,23 @@ class DataForm(QWidget):
         # find the data that id = start
         self.jmp(self.start)
 
-    def updateUI(self):
-        self.detail_label.setText(f"详细信息: 已载入{len(self.data)}条数据")
+    def update_ui(self):
+        self.detail_label.setText(f"详细信息: 已载入{len(self.table_data)}条数据")
 
         # get the line
-        row = self.data.loc[self.loc]
+        row = self.table_data.loc[self.loc]
 
         # update label
         self.raw_level_1.setText(row["一级分类"])
         self.raw_level_2.setText(row["二级分类"])
 
         # match the category
-        self.matched_level_1_name, self.level_1_index = get_category_level_1(self.category,
-                                                                             row["一级分类"])
-        self.matched_level_2_name, self.level_2_index = get_category_level_2(self.category,
-                                                                             self.matched_level_1_name, row["二级分类"])
+        self.matched_level_1_name, self.level_1_index = get_category_level_1(
+            self.category, row["一级分类"]
+        )
+        self.matched_level_2_name, self.level_2_index = get_category_level_2(
+            self.category, self.matched_level_1_name, row["二级分类"]
+        )
         # update combobox
         self.level_1_select.setCurrentText(self.matched_level_1_name)
         self.level_2_select.setCurrentText(self.matched_level_2_name)
@@ -361,18 +412,17 @@ class DataForm(QWidget):
         self.table_widget.setItem(0, 4, QTableWidgetItem(str(row["品名"])))
         self.table_widget.setItem(0, 5, QTableWidgetItem(str(row["规格"])))
         self.table_widget.setItem(0, 6, QTableWidgetItem(str(row["对广行达结算价"])))
-        self.table_widget.setItem(
-            0, 7, QTableWidgetItem(str(row["含税运一件代发价"])))
+        self.table_widget.setItem(0, 7, QTableWidgetItem(str(row["含税运一件代发价"])))
         self.table_widget.resizeColumnsToContents()
 
         # update image
         self.update_image_path_list()
 
         # do some check
-        if str(row["对广行达结算价"]) == 'nan':
+        if str(row["对广行达结算价"]) == "nan":
             InfoBar.error(title="Error", content="结算价不能为空", parent=self)
             return
-        if str(row["含税运一件代发价"]) == 'nan':
+        if str(row["含税运一件代发价"]) == "nan":
             InfoBar.error(title="Error", content="代发价不能为空", parent=self)
             return
 
@@ -380,47 +430,75 @@ class DataForm(QWidget):
         self.poster_url_list.clear()
         self.detail_url_list.clear()
 
-        idx = self.data.loc[self.loc]["序号"]
-        image_folder = [
-            i for i in self.image_folder_list if i.name.startswith(str(idx))]
+        idx = self.table_data.loc[self.loc]["序号"]
+        self.image_folder = [
+            i for i in self.image_folder_list if i.name.startswith(str(idx))
+        ]
 
-        if not image_folder:
+        if not self.image_folder:
             InfoBar.error(title="Error", content="未找到图片文件夹", parent=self)
             return
 
-        image_folder = image_folder[-1]
+        self.image_folder = self.image_folder[-1]
 
         start_time = time.time()
-        self.posts, self.details = glob_file_in_folder(image_folder)
-        loguru.logger.info(
-            f"glob_file_in_folder cost {time.time() - start_time:.2f}s")
+        self.posts, self.details = glob_file_in_folder(self.image_folder)
+        loguru.logger.info(f"glob_file_in_folder cost {time.time() - start_time:.2f}s")
 
         for i in self.posts:
             i = str(i)
-            item_name = i[i.find(str(int(idx))) + len(str(idx)):]
+            item_name = i[i.find(str(int(idx))) + len(str(idx)) :]
             self.poster_url_list.addItem(item_name)
             # self.poster_url_list.addItem(str(i).split(str(int(idx)))[-1])
 
         for i in self.details:
             i = str(i)
-            item_name = i[i.find(str(int(idx))) + len(str(idx)):]
+            item_name = i[i.find(str(int(idx))) + len(str(idx)) :]
             self.detail_url_list.addItem(item_name)
             # self.detail_url_list.addItem(str(i).split(str(int(idx)))[-1])
 
         pass
 
-    def read_table_data(self, file_name) -> list:
+    @staticmethod
+    def read_table_data(file_name) -> DataFrame:
         df = pd.read_excel(file_name, header=3)
         # 重新设置列名
         df.columns = [
-            "序号", "责任人", "一级分类", "二级分类", "品牌", "品名", "条码", "规格",
-            "品牌标价", "淘宝", "链接", "京东", "链接", "其他平台", "链接",
-            "对广行达结算价", "税率", "含税运一件代发价", "上线建议", "供应商公司名称"
+            "序号",
+            "责任人",
+            "一级分类",
+            "二级分类",
+            "品牌",
+            "品名",
+            "条码",
+            "规格",
+            "品牌标价",
+            "淘宝",
+            "链接",
+            "京东",
+            "链接",
+            "其他平台",
+            "链接",
+            "对广行达结算价",
+            "税率",
+            "含税运一件代发价",
+            "上线建议",
+            "供应商公司名称",
         ]
         # "序号""一级分类", "二级分类", "品牌", "品名""对广行达结算价" "含税运一件代发价", "上线建议"
-        data = df[[
-            "序号", "一级分类", "二级分类", "品牌", "品名", "规格", "对广行达结算价", "含税运一件代发价", "上线建议"
-        ]]
+        data = df[
+            [
+                "序号",
+                "一级分类",
+                "二级分类",
+                "品牌",
+                "品名",
+                "规格",
+                "对广行达结算价",
+                "含税运一件代发价",
+                "上线建议",
+            ]
+        ]
         data = data.loc[data["上线建议"] != "无需上线"]
 
         # 重新设置索引
@@ -428,7 +506,7 @@ class DataForm(QWidget):
 
         return data
 
-    async def initData(self):
+    async def init_data(self):
         # flush category
         self.category = await get_category()
 
@@ -442,11 +520,11 @@ class DataForm(QWidget):
         # with open("category.json", "r") as f:
         #     category = json.load(f)
 
-        self.data = self.read_table_data(self.file_name)
+        self.table_data = self.read_table_data(self.file_name)
 
         pass
 
-    def initUI(self):
+    def init_ui(self):
         # Create layout
 
         layout = VBoxLayout(self)
@@ -456,26 +534,25 @@ class DataForm(QWidget):
 
         self.start_edit = LineEdit()
         self.end_edit = LineEdit()
-        self.start_edit.setPlaceholderText('开始序号')
-        self.end_edit.setPlaceholderText('结束序号')
+        self.start_edit.setPlaceholderText("开始序号")
+        self.end_edit.setPlaceholderText("结束序号")
 
-        self.reset_button = PushButton('重置')
+        self.reset_button = PushButton(text="重置")
         self.reset_button.clicked.connect(self.reset)
-        self.load_button = PushButton('加载')
+        self.load_button = PushButton(text="加载")
         self.load_button.clicked.connect(self.load)
 
-        self.jump_button = PushButton('跳转到')
+        self.jump_button = PushButton(text="跳转到")
         self.jump_edit = LineEdit()
-        self.jump_edit.setPlaceholderText('跳转到')
-        self.jump_button.clicked.connect(
-            lambda: self.jmp(self.jump_edit.text()))
+        self.jump_edit.setPlaceholderText("跳转到")
+        self.jump_button.clicked.connect(lambda: self.jmp(self.jump_edit.text()))
 
-        self.pre_button = PushButton('上一条')
+        self.pre_button = PushButton(text="上一条")
         self.pre_button.clicked.connect(self.pre)
-        self.next_button = PushButton('下一条')
+        self.next_button = PushButton(text="下一条")
         self.next_button.clicked.connect(self.nxt)
 
-        self.upload_button = PushButton('上传')
+        self.upload_button = PushButton(text="上传")
         self.upload_button.clicked.connect(self.upload)
 
         header_layout.addWidget(self.reset_button)
@@ -494,45 +571,45 @@ class DataForm(QWidget):
 
         category_layout = VBoxLayout(self)
         category_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.detail_label = BodyLabel("详细信息")
+        self.detail_label = BodyLabel(text="详细信息")
         self.detail_label.setMaximumHeight(20)
         category_layout.addWidget(self.detail_label)
 
         weight_layout = QHBoxLayout()
         self.weight_edit = LineEdit()
-        self.weight_edit.setText('1')
+        self.weight_edit.setText("1")
 
         self.weight_edit.setMaximumWidth(100)
-        weight_layout.addWidget(BodyLabel("重量"))
+        weight_layout.addWidget(BodyLabel(text="重量"))
         weight_layout.addWidget(self.weight_edit)
         category_layout.addLayout(weight_layout)
 
         level_1_layout = QHBoxLayout()
-        self.raw_level_1 = BodyLabel("无")
+        self.raw_level_1 = BodyLabel(text="无")
         self.level_1_select = ComboBox()
 
-        self.level_1_select.currentTextChanged.connect(
-            self.level_1_select_change)
+        self.level_1_select.currentTextChanged.connect(self.level_1_select_change)
         self.raw_level_1.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
 
-        level_1_layout.addWidget(BodyLabel("一级分类"))
+        level_1_layout.addWidget(BodyLabel(text="一级分类"))
         level_1_layout.addWidget(self.raw_level_1)
         level_1_layout.addWidget(self.level_1_select)
 
         level_2_layout = QHBoxLayout()
-        self.raw_level_2 = BodyLabel("无")
+        self.raw_level_2 = BodyLabel(text="无")
         self.level_2_select = ComboBox()
-        self.level_2_select.currentTextChanged.connect(
-            self.level_2_select_change)
+        self.level_2_select.currentTextChanged.connect(self.level_2_select_change)
         self.raw_level_2.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
 
         # update category to combobox
         for i in self.category.keys():
             self.level_1_select.addItem(i)
 
-        level_2_layout.addWidget(BodyLabel("二级分类"))
+        level_2_layout.addWidget(BodyLabel(text="二级分类"))
         level_2_layout.addWidget(self.raw_level_2)
         level_2_layout.addWidget(self.level_2_select)
 
@@ -540,11 +617,11 @@ class DataForm(QWidget):
         category_layout.addLayout(level_2_layout)
 
         image_info_layout = VBoxLayout(self)
-        image_info_layout.addWidget(BodyLabel("图片信息"))
+        image_info_layout.addWidget(BodyLabel(text="图片信息"))
 
         url_info_label_layout = QHBoxLayout()
-        url_info_label_layout.addWidget(BodyLabel("主图"))
-        url_info_label_layout.addWidget(BodyLabel("详情图"))
+        url_info_label_layout.addWidget(BodyLabel(text="主图"))
+        url_info_label_layout.addWidget(BodyLabel(text="详情图"))
 
         url_info_layout = QHBoxLayout()
         self.poster_url_list = ListWidget()
@@ -564,7 +641,7 @@ class DataForm(QWidget):
         body_layout.addLayout(info_layout)
 
         table_layout = VBoxLayout(self)
-        data_label = BodyLabel("数据信息")
+        data_label = BodyLabel(text="数据信息")
         data_label.setMaximumHeight(20)
         table_layout.addWidget(data_label)
 
@@ -576,8 +653,14 @@ class DataForm(QWidget):
 
         # Set the table headers
         headers = [
-            "序号", "一级分类", "二级分类", "品牌",
-            "品名", "规格", "结算价", "代发价"
+            "序号",
+            "一级分类",
+            "二级分类",
+            "品牌",
+            "品名",
+            "规格",
+            "结算价",
+            "代发价",
         ]
         self.table_widget.setHorizontalHeaderLabels(headers)
 
@@ -610,14 +693,16 @@ class DataForm(QWidget):
         for i in self.category[level_1_name]["children"]:
             self.level_2_select.addItem(i)
 
-        self.current_level_1_name, self.level_1_index = get_category_level_1(self.category,
-                                                                             level_1_name)
+        self.current_level_1_name, self.level_1_index = get_category_level_1(
+            self.category, level_1_name
+        )
 
     def level_2_select_change(self):
         level_1_name = self.level_1_select.currentText()
         level_2_name = self.level_2_select.currentText()
-        self.current_level_2_name, self.level_2_index = get_category_level_2(self.category,
-                                                                             level_1_name, level_2_name)
+        self.current_level_2_name, self.level_2_index = get_category_level_2(
+            self.category, level_1_name, level_2_name
+        )
 
     def pre(self):
         if self.loc == -1:
@@ -628,25 +713,25 @@ class DataForm(QWidget):
             return
 
         self.loc -= 1
-        self.updateUI()
+        self.update_ui()
 
         InfoBar.info(title="Success", content="已经切换到上一条数据", parent=self)
-        loguru.logger.info(f"当前序号: {self.data.loc[self.loc]['序号']}")
+        loguru.logger.info(f"当前序号: {self.table_data.loc[self.loc]['序号']}")
 
     def nxt(self):
         if self.loc == -1:
             return
 
-        if self.loc + 1 >= len(self.data):
+        if self.loc + 1 >= len(self.table_data):
             InfoBar.error(title="Error", content="已经是最后一条数据", parent=self)
             loguru.logger.info("已经是最后一条数据")
             return
 
         self.loc += 1
-        self.updateUI()
+        self.update_ui()
 
         InfoBar.info(title="Success", content="已经切换到下一条数据", parent=self)
-        loguru.logger.info(f"当前序号: {self.data.loc[self.loc]['序号']}")
+        loguru.logger.info(f"当前序号: {self.table_data.loc[self.loc]['序号']}")
 
     def jmp(self, idx):
         if isinstance(idx, str):
@@ -655,18 +740,18 @@ class DataForm(QWidget):
                 return
             idx = int(idx)
 
-        self.loc = self.data[self.data["序号"] == idx]
+        self.loc = self.table_data[self.table_data["序号"] == idx]
         if self.loc.empty:
             InfoBar.error(title="Error", content="未找到数据", parent=self)
             return
         self.loc = self.loc.index[0]
 
-        self.updateUI()
+        self.update_ui()
 
         InfoBar.info(title="Success", content="已经切换到指定数据", parent=self)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
