@@ -8,6 +8,7 @@ beautifulsoup4
 pandas
 openpyxl
 lxml
+qasync
 
 pyside6
 PySide6-Fluent-Widgets[full]
