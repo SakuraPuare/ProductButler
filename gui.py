@@ -260,10 +260,10 @@ class DataForm(QWidget):
     async def _upload(self):
         self.is_upload = True
         if (
-            not self.image_folder
-            or self.loc == -1
-            or not self.posts
-            or not self.details
+                not self.image_folder
+                or self.loc == -1
+                or not self.posts
+                or not self.details
         ):
             InfoBar.error(title="Error", content="图片未载入", parent=self)
             return
@@ -271,9 +271,10 @@ class DataForm(QWidget):
         ids = self.table_widget.item(0, 0).text()  # 序号
         brand = self.table_widget.item(0, 3).text()  # 品牌
         goods_name = self.table_widget.item(0, 4).text()  # 品名
+        bar_code = self.table_widget.item(0, 5).text()  # 条码
         weight = self.weight_edit.text()  # 重量
-        bid_price = self.table_widget.item(0, 6).text()  # 对广行达结算价
-        market_price = self.table_widget.item(0, 7).text()  # 含税运一件代发价
+        bid_price = self.table_widget.item(0, 7).text()  # 对广行达结算价
+        market_price = self.table_widget.item(0, 8).text()  # 含税运一件代发价
 
         matched = (
             self.matched_level_1_name != self.current_level_1_name,
@@ -336,6 +337,7 @@ class DataForm(QWidget):
                 weight=weight,
                 level_1=self.level_1_index,
                 level_2=self.level_2_index,
+                bar_code=bar_code,
             )
 
             assert resp.get("success"), resp.get("msg")
@@ -348,7 +350,7 @@ class DataForm(QWidget):
             self.nxt()
             loguru.logger.info(f"[{ids}] success")
         finally:
-            with open("black_list.txt", "a+") as f:
+            with open("black_list.txt", "a+", encoding='u8') as f:
                 f.write(f"{ids}\n")
             self.is_upload = False
 
@@ -356,6 +358,7 @@ class DataForm(QWidget):
         asyncio.ensure_future(self._reset())
 
     async def _reset(self):
+        self.is_upload = False
         self.image_folder_list = list(pathlib.Path(self.image_path).iterdir())
 
         await self.init_data()
@@ -410,9 +413,10 @@ class DataForm(QWidget):
         self.table_widget.setItem(0, 2, QTableWidgetItem(str(row["二级分类"])))
         self.table_widget.setItem(0, 3, QTableWidgetItem(str(row["品牌"])))
         self.table_widget.setItem(0, 4, QTableWidgetItem(str(row["品名"])))
-        self.table_widget.setItem(0, 5, QTableWidgetItem(str(row["规格"])))
-        self.table_widget.setItem(0, 6, QTableWidgetItem(str(row["对广行达结算价"])))
-        self.table_widget.setItem(0, 7, QTableWidgetItem(str(row["含税运一件代发价"])))
+        self.table_widget.setItem(0, 5, QTableWidgetItem(str(row["条码"])))
+        self.table_widget.setItem(0, 6, QTableWidgetItem(str(row["规格"])))
+        self.table_widget.setItem(0, 7, QTableWidgetItem(str(row["对广行达结算价"])))
+        self.table_widget.setItem(0, 8, QTableWidgetItem(str(row["含税运一件代发价"])))
         self.table_widget.resizeColumnsToContents()
 
         # update image
@@ -443,17 +447,18 @@ class DataForm(QWidget):
 
         start_time = time.time()
         self.posts, self.details = glob_file_in_folder(self.image_folder)
-        loguru.logger.info(f"glob_file_in_folder cost {time.time() - start_time:.2f}s")
+        loguru.logger.info(f"glob_file_in_folder cost {
+                           time.time() - start_time:.2f}s")
 
         for i in self.posts:
             i = str(i)
-            item_name = i[i.find(str(int(idx))) + len(str(idx)) :]
+            item_name = i[i.find(str(int(idx))) + len(str(idx)):]
             self.poster_url_list.addItem(item_name)
             # self.poster_url_list.addItem(str(i).split(str(int(idx)))[-1])
 
         for i in self.details:
             i = str(i)
-            item_name = i[i.find(str(int(idx))) + len(str(idx)) :]
+            item_name = i[i.find(str(int(idx))) + len(str(idx)):]
             self.detail_url_list.addItem(item_name)
             # self.detail_url_list.addItem(str(i).split(str(int(idx)))[-1])
 
@@ -493,6 +498,7 @@ class DataForm(QWidget):
                 "二级分类",
                 "品牌",
                 "品名",
+                "条码",
                 "规格",
                 "对广行达结算价",
                 "含税运一件代发价",
@@ -511,13 +517,13 @@ class DataForm(QWidget):
         self.category = await get_category()
 
         if not os.path.exists("black_list.txt"):
-            with open("black_list.txt", "w") as f:
+            with open("black_list.txt", "w", encoding='u8') as f:
                 f.write("")
 
-        with open("black_list.txt", "r") as f:
+        with open("black_list.txt", "r", encoding='u8') as f:
             self.black_list: list[int] = list(map(int, f.readlines()))
 
-        # with open("category.json", "r") as f:
+        # with open("category.json", "r", encoding='u8') as f:
         #     category = json.load(f)
 
         self.table_data = self.read_table_data(self.file_name)
@@ -545,7 +551,8 @@ class DataForm(QWidget):
         self.jump_button = PushButton(text="跳转到")
         self.jump_edit = LineEdit()
         self.jump_edit.setPlaceholderText("跳转到")
-        self.jump_button.clicked.connect(lambda: self.jmp(self.jump_edit.text()))
+        self.jump_button.clicked.connect(
+            lambda: self.jmp(self.jump_edit.text()))
 
         self.pre_button = PushButton(text="上一条")
         self.pre_button.clicked.connect(self.pre)
@@ -588,7 +595,8 @@ class DataForm(QWidget):
         self.raw_level_1 = BodyLabel(text="无")
         self.level_1_select = ComboBox()
 
-        self.level_1_select.currentTextChanged.connect(self.level_1_select_change)
+        self.level_1_select.currentTextChanged.connect(
+            self.level_1_select_change)
         self.raw_level_1.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
@@ -600,7 +608,8 @@ class DataForm(QWidget):
         level_2_layout = QHBoxLayout()
         self.raw_level_2 = BodyLabel(text="无")
         self.level_2_select = ComboBox()
-        self.level_2_select.currentTextChanged.connect(self.level_2_select_change)
+        self.level_2_select.currentTextChanged.connect(
+            self.level_2_select_change)
         self.raw_level_2.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
@@ -646,10 +655,6 @@ class DataForm(QWidget):
         table_layout.addWidget(data_label)
 
         # Create a table widget
-        self.table_widget = TableWidget()
-        self.table_widget.setMaximumHeight(100)
-        self.table_widget.setRowCount(1)
-        self.table_widget.setColumnCount(8)
 
         # Set the table headers
         headers = [
@@ -658,20 +663,23 @@ class DataForm(QWidget):
             "二级分类",
             "品牌",
             "品名",
+            "条码",
             "规格",
             "结算价",
             "代发价",
         ]
+
+        self.table_widget = TableWidget()
+        self.table_widget.setMaximumHeight(100)
+        self.table_widget.setRowCount(1)
+        self.table_widget.setColumnCount(len(headers))
+
         self.table_widget.setHorizontalHeaderLabels(headers)
 
-        self.table_widget.setColumnWidth(0, 50)  # 序号
-        self.table_widget.setColumnWidth(1, 80)  # 一级分类
-        self.table_widget.setColumnWidth(2, 80)  # 二级分类
-        self.table_widget.setColumnWidth(3, 150)  # 品牌
-        self.table_widget.setColumnWidth(4, 350)  # 品名
-        self.table_widget.setColumnWidth(5, 220)  # 规格
-        self.table_widget.setColumnWidth(6, 100)  # 对广行达结算价
-        self.table_widget.setColumnWidth(7, 100)  # 含税运一件代发价
+        # Set the table column width
+        width_list = [50, 80, 80, 150, 350, 150, 220, 100, 100]
+        for i, width in enumerate(width_list):
+            self.table_widget.setColumnWidth(i, width)
 
         # Add the table to the layout
         table_layout.addWidget(self.table_widget)

@@ -38,19 +38,22 @@ default_data = {
     "marketPrice5": "",
     "bidPrice5": "",
     "weight5": "",
+    'count': '99999',
+    'salesReturn': '是',
 }
 
 
 async def add_goods(
-    poster_url: list[str],
-    detail_url: list[str],
-    brand: str,
-    goods_name: str,
-    market_price: str,
-    bid_price: str,
-    weight: str,
-    level_1: str,
-    level_2: str,
+        poster_url: list[str],
+        detail_url: list[str],
+        brand: str,
+        goods_name: str,
+        market_price: str,
+        bid_price: str,
+        weight: str,
+        level_1: str,
+        level_2: str,
+        bar_code: str,
 ) -> dict:
     data = {
         "poster": ",".join(poster_url) + ",",
@@ -64,6 +67,7 @@ async def add_goods(
         "bidPrice1": bid_price,
         "weight1": weight,
         "specPic1": poster_url[0] + ",",
+        "barCode": bar_code,
     }
     data.update(default_data)
 
@@ -143,8 +147,8 @@ async def get_category() -> Category:
     category_list = {}
     level_1_soup = BeautifulSoup(response.text, 'html.parser')
     level_1_options = level_1_soup.find_all('option')
-    for option_l1 in level_1_options:
-        value_l1 = option_l1.get('value')
+    for option_1 in level_1_options:
+        value_l1 = option_1.get('value')
         if not value_l1:
             continue
 
@@ -170,12 +174,12 @@ async def get_category() -> Category:
                 'children': {}
             }
 
-        category_list[option_l1.text.strip()] = {
+        category_list[option_1.text.strip()] = {
             'level': value_l1,
             'children': child
         }
 
-    with open("category.json", "w") as f:
+    with open("category.json", "w", encoding='u8') as f:
         import json
         json.dump(category_list, f, ensure_ascii=False, indent=4)
 
@@ -190,7 +194,7 @@ if __name__ == "__main__":
     # import json
 
     # cat = asyncio.run(get_category())
-    # with open("category.json", "w") as f:
+    # with open("category.json", "w", encoding='u8') as f:
     #     json.dump(cat, f, ensure_ascii=False, indent=4)
 
     # resp = asyncio.run(upload_file('poster', pathlib.Path('企悦汇选品1038-1197 (2)/未命名文件夹 2/1038.儿童内衣专用洗衣液300ml/主图/81688faeabc9cbd0a1d92ddd3df1887.jpg')))

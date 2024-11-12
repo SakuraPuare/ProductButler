@@ -1,0 +1,519 @@
+{
+    "米面粮油": {
+        "level": "1",
+        "children": {
+            "大米": {
+                "level": "2",
+                "children": {}
+            },
+            "食用油": {
+                "level": "3",
+                "children": {}
+            },
+            "厨房调味": {
+                "level": "19",
+                "children": {}
+            },
+            "南北干货": {
+                "level": "20",
+                "children": {}
+            }
+        }
+    },
+    "食品零食": {
+        "level": "5",
+        "children": {
+            "休闲零食": {
+                "level": "24",
+                "children": {}
+            },
+            "成人奶粉": {
+                "level": "300265",
+                "children": {}
+            },
+            "方便美食": {
+                "level": "207",
+                "children": {}
+            }
+        }
+    },
+    "生鲜水果": {
+        "level": "8",
+        "children": {
+            "熟食卤味": {
+                "level": "300244",
+                "children": {}
+            },
+            "冻品面点": {
+                "level": "300245",
+                "children": {}
+            },
+            "海鲜水产": {
+                "level": "300267",
+                "children": {}
+            },
+            "品质肉禽": {
+                "level": "279",
+                "children": {}
+            },
+            "蔬菜蛋品": {
+                "level": "237",
+                "children": {}
+            },
+            "新鲜水果": {
+                "level": "12",
+                "children": {}
+            }
+        }
+    },
+    "精致礼盒": {
+        "level": "10",
+        "children": {
+            "生鲜组合": {
+                "level": "300277",
+                "children": {}
+            },
+            "零食组合": {
+                "level": "22",
+                "children": {}
+            },
+            "粮油组合": {
+                "level": "11",
+                "children": {}
+            }
+        }
+    },
+    "五谷杂粮": {
+        "level": "18",
+        "children": {}
+    },
+    "滋补保健": {
+        "level": "26",
+        "children": {
+            "养生茶饮": {
+                "level": "300262",
+                "children": {}
+            },
+            "药食同源": {
+                "level": "300263",
+                "children": {}
+            },
+            "营养健康": {
+                "level": "300264",
+                "children": {}
+            }
+        }
+    },
+    "个护清洁": {
+        "level": "27",
+        "children": {
+            "衣物清洁": {
+                "level": "300271",
+                "children": {}
+            },
+            "清洁工具": {
+                "level": "31",
+                "children": {}
+            },
+            "身体护理电器": {
+                "level": "104",
+                "children": {}
+            },
+            "口腔护理": {
+                "level": "101",
+                "children": {}
+            },
+            "女性护理": {
+                "level": "38",
+                "children": {}
+            },
+            "家庭清洁": {
+                "level": "30",
+                "children": {}
+            },
+            "纸品湿巾": {
+                "level": "28",
+                "children": {}
+            },
+            "洗发护发": {
+                "level": "33",
+                "children": {}
+            },
+            "身体护理": {
+                "level": "35",
+                "children": {}
+            }
+        }
+    },
+    "日用百货": {
+        "level": "39",
+        "children": {
+            "厨房用品": {
+                "level": "44",
+                "children": {}
+            },
+            "计生情趣": {
+                "level": "300204",
+                "children": {}
+            },
+            "五金工具": {
+                "level": "300275",
+                "children": {}
+            },
+            "箱包皮具": {
+                "level": "90",
+                "children": {}
+            },
+            "抱枕靠垫": {
+                "level": "236",
+                "children": {}
+            },
+            "洗晒用品": {
+                "level": "95",
+                "children": {}
+            },
+            "浴室用品": {
+                "level": "42",
+                "children": {}
+            },
+            "毛巾浴巾": {
+                "level": "41",
+                "children": {}
+            },
+            "床品件套": {
+                "level": "40",
+                "children": {}
+            },
+            "水杯": {
+                "level": "278",
+                "children": {}
+            },
+            "收纳用品": {
+                "level": "94",
+                "children": {}
+            },
+            "日常用品": {
+                "level": "300286",
+                "children": {}
+            }
+        }
+    },
+    "本地生活": {
+        "level": "51",
+        "children": {
+            "电影票券": {
+                "level": "300279",
+                "children": {}
+            },
+            "餐饮连锁": {
+                "level": "300281",
+                "children": {}
+            },
+            "文化娱乐": {
+                "level": "300282",
+                "children": {}
+            },
+            "鲜花配送": {
+                "level": "134",
+                "children": {}
+            },
+            "蛋糕配送": {
+                "level": "105",
+                "children": {}
+            }
+        }
+    },
+    "家用电器": {
+        "level": "52",
+        "children": {
+            "电风扇": {
+                "level": "53",
+                "children": {}
+            },
+            "加湿器": {
+                "level": "55",
+                "children": {}
+            },
+            "清洁电器": {
+                "level": "56",
+                "children": {}
+            },
+            "挂烫机": {
+                "level": "59",
+                "children": {}
+            },
+            "剃须刀": {
+                "level": "72",
+                "children": {}
+            },
+            "电吹风": {
+                "level": "74",
+                "children": {}
+            },
+            "小家电": {
+                "level": "122",
+                "children": {}
+            },
+            "取暖器": {
+                "level": "129",
+                "children": {}
+            },
+            "个护健康": {
+                "level": "300280",
+                "children": {}
+            },
+            "其他生活电器": {
+                "level": "61",
+                "children": {}
+            }
+        }
+    },
+    "厨房小电": {
+        "level": "62",
+        "children": {
+            "电饭煲": {
+                "level": "63",
+                "children": {}
+            },
+            "电压力锅": {
+                "level": "64",
+                "children": {}
+            },
+            "榨汁机": {
+                "level": "65",
+                "children": {}
+            },
+            "电炖锅": {
+                "level": "66",
+                "children": {}
+            },
+            "电水壶": {
+                "level": "67",
+                "children": {}
+            },
+            "养生壶": {
+                "level": "68",
+                "children": {}
+            },
+            "空气炸锅": {
+                "level": "69",
+                "children": {}
+            },
+            "电磁炉": {
+                "level": "70",
+                "children": {}
+            },
+            "豆浆机": {
+                "level": "71",
+                "children": {}
+            },
+            "多用途锅": {
+                "level": "114",
+                "children": {}
+            },
+            "电烤箱": {
+                "level": "115",
+                "children": {}
+            },
+            "厨房电器": {
+                "level": "123",
+                "children": {}
+            }
+        }
+    },
+    "手机数码": {
+        "level": "96",
+        "children": {
+            "充电宝": {
+                "level": "97",
+                "children": {}
+            },
+            "蓝牙耳机": {
+                "level": "98",
+                "children": {}
+            },
+            "手机配件": {
+                "level": "99",
+                "children": {}
+            },
+            "智能手环": {
+                "level": "124",
+                "children": {}
+            },
+            "音箱": {
+                "level": "130",
+                "children": {}
+            }
+        }
+    },
+    "美妆护肤": {
+        "level": "138",
+        "children": {
+            "香水": {
+                "level": "300242",
+                "children": {}
+            },
+            "彩妆": {
+                "level": "300243",
+                "children": {}
+            },
+            "男士护肤": {
+                "level": "300272",
+                "children": {}
+            },
+            "美妆工具": {
+                "level": "300273",
+                "children": {}
+            },
+            "面部防晒": {
+                "level": "300274",
+                "children": {}
+            },
+            "面部护理": {
+                "level": "142",
+                "children": {}
+            }
+        }
+    },
+    "母婴亲子": {
+        "level": "243",
+        "children": {
+            "奶粉": {
+                "level": "300203",
+                "children": {}
+            },
+            "营养辅食": {
+                "level": "300276",
+                "children": {}
+            },
+            "尿裤湿巾": {
+                "level": "37",
+                "children": {}
+            },
+            "喂养用品": {
+                "level": "245",
+                "children": {}
+            },
+            "妈妈专区": {
+                "level": "244",
+                "children": {}
+            }
+        }
+    },
+    "酒水饮料": {
+        "level": "300221",
+        "children": {
+            "白酒": {
+                "level": "300222",
+                "children": {}
+            },
+            "葡萄酒": {
+                "level": "300223",
+                "children": {}
+            },
+            "黄酒": {
+                "level": "300224",
+                "children": {}
+            },
+            "啤酒": {
+                "level": "300225",
+                "children": {}
+            },
+            "乳饮冰品": {
+                "level": "300268",
+                "children": {}
+            },
+            "饮品茗茶": {
+                "level": "25",
+                "children": {}
+            }
+        }
+    },
+    "运动户外": {
+        "level": "300230",
+        "children": {
+            "健身训练": {
+                "level": "300233",
+                "children": {}
+            },
+            "骑行运动": {
+                "level": "300234",
+                "children": {}
+            },
+            "体育用品": {
+                "level": "300235",
+                "children": {}
+            },
+            "户外鞋服": {
+                "level": "300236",
+                "children": {}
+            },
+            "户外装备": {
+                "level": "300237",
+                "children": {}
+            },
+            "垂钓用品": {
+                "level": "300238",
+                "children": {}
+            },
+            "游泳用品": {
+                "level": "300239",
+                "children": {}
+            },
+            "运动服装": {
+                "level": "300240",
+                "children": {}
+            },
+            "棋牌娱乐": {
+                "level": "300241",
+                "children": {}
+            }
+        }
+    },
+    "文具用品": {
+        "level": "300246",
+        "children": {
+            "办公用品": {
+                "level": "300247",
+                "children": {}
+            },
+            "学习用品": {
+                "level": "300248",
+                "children": {}
+            },
+            "财会用品": {
+                "level": "300278",
+                "children": {}
+            }
+        }
+    },
+    "自营产品": {
+        "level": "300287",
+        "children": {
+            "蛋糕": {
+                "level": "300288",
+                "children": {}
+            },
+            "鲜花": {
+                "level": "300289",
+                "children": {}
+            },
+            "电影": {
+                "level": "300290",
+                "children": {}
+            },
+            "餐饮": {
+                "level": "300291",
+                "children": {}
+            }
+        }
+    },
+    "是": {
+        "level": "是",
+        "children": {}
+    },
+    "否": {
+        "level": "否",
+        "children": {}
+    }
+}

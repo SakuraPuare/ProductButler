@@ -1,7 +1,6 @@
 httpx
 loguru
 aiofiles
-python-magic
 imagehash
 pillow
 beautifulsoup4

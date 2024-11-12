@@ -166,6 +166,6 @@ data/
 .vscode/
 
 black_list.txt
-categories.json
+category.json
 cookies.json
 verify.jpg

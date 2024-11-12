@@ -1,3 +1,4 @@
+import pathlib
 import re
 
 post_re = re.compile(r'主图')
@@ -67,8 +68,6 @@ def get_ratio(file_path: 'pathlib.Path'):
 
 
 def glob_file_in_folder(folder: 'pathlib.Path') -> tuple[list, list]:
-    import pathlib
-
     import imagehash
 
     file_list = [pathlib.Path(x) for x in find_files(folder)]
@@ -194,7 +193,7 @@ def save_cookies(httpx_cookies: 'httpx.Cookies', file_path: str = "cookies.json"
     import json
 
     import httpx
-    with open(file_path, 'w') as f:
+    with open(file_path, 'w', encoding='u8') as f:
         json.dump(dict(httpx_cookies), f)
 
 
@@ -207,7 +206,7 @@ def load_cookies(file_path: str = "cookies.json") -> 'httpx.Cookies':
     if not os.path.exists(file_path):
         return httpx.Cookies()
 
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r', encoding='u8') as f:
         return httpx.Cookies(json.load(f))
 
 

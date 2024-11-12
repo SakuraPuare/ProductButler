@@ -43,7 +43,7 @@ async def main():
                 f'\nposts_url: {
                     '\n'.join(['/'.join(i.parts[2:]) for i in posts])}\n\n'
                 + f'details: {'\n'.join(['/'.join(i.parts[2:])
-                                        for i in details])}'
+                                         for i in details])}'
             )
             loguru.logger.warning(
                 f"\nori: {category1} {category2}\n" +
@@ -87,7 +87,7 @@ async def main():
         except Exception as e:
             loguru.logger.error(str(type(e)), e)
         finally:
-            with open("black_list.txt", "a") as f:
+            with open("black_list.txt", "a", encoding='u8') as f:
                 f.write(f"{ids}\n")
 
 
@@ -99,10 +99,10 @@ if __name__ == "__main__":
     data = pandas.read_excel(file_name)
 
     ranges = 1869, 1961
-    with open("black_list.txt", "r") as f:
+    with open("black_list.txt", "r", encoding='u8') as f:
         black_list: list[int] = list(map(int, f.readlines()))
 
-    with open("category.json", "r") as f:
+    with open("category.json", "r", encoding='u8') as f:
         category: Category = json.load(f)
     # find data id in ranges
     data = data.loc[(data["序号"] >= ranges[0]) & (data["序号"] <= ranges[1])]
