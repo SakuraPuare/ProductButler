@@ -42,7 +42,7 @@ from apis import (
 from utils import get_category_level_1, get_category_level_2, glob_file_in_folder
 
 
-class FileForm(QWidget):
+class Main(QWidget):
     def __init__(self):
         super().__init__()
 
@@ -151,11 +151,11 @@ class LoginForm(QWidget):
 
         # Create input fields for account and password
         self.account_input = LineEdit(self)
-
+        self.account_input.setText("gys8")
         self.account_input.setPlaceholderText("输入账号")
 
         self.password_input = PasswordLineEdit(self)
-
+        self.password_input.setText("881125")
         self.password_input.setPlaceholderText("输入密码")
 
         self.captcha_input = LineEdit(self)
@@ -185,6 +185,7 @@ class LoginForm(QWidget):
 
         # Set the main window properties
         self.setWindowTitle("Login Window")
+        self.resize(400, 300)
         # self.setGeometry(300, 300, 400, 300)
 
     def reload(self, _event):
@@ -764,7 +765,7 @@ if __name__ == "__main__":
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    ex = FileForm()
+    ex = Main()
     ex.show()
 
     with loop:

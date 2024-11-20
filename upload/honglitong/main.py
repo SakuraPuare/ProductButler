@@ -4,7 +4,6 @@ import pathlib
 
 import loguru
 import pandas
-
 from apis import add_goods, upload_file
 from typehint import Category
 from utils import get_category_level_1, get_category_level_2, glob_file_in_folder
