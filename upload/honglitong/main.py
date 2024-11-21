@@ -4,6 +4,7 @@ import pathlib
 
 import loguru
 import pandas
+
 from apis import add_goods, upload_file
 from typehint import Category
 from utils import get_category_level_1, get_category_level_2, glob_file_in_folder
@@ -27,7 +28,7 @@ async def main():
             weight = row["规格"]
             loguru.logger.info(
                 f"[{ids}] {category1} {category2} {brand} {
-                    goods_name} {market_price} {bid_price} {weight}"
+                goods_name} {market_price} {bid_price} {weight}"
             )
 
             # get image
@@ -40,7 +41,7 @@ async def main():
             # check the info
             loguru.logger.warning(
                 f'\nposts_url: {
-                    '\n'.join(['/'.join(i.parts[2:]) for i in posts])}\n\n'
+                '\n'.join(['/'.join(i.parts[2:]) for i in posts])}\n\n'
                 + f'details: {'\n'.join(['/'.join(i.parts[2:])
                                          for i in details])}'
             )

@@ -6,7 +6,6 @@ import time
 
 import loguru
 import pandas as pd
-from pandas import DataFrame
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
@@ -17,6 +16,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QWidget,
 )
+from pandas import DataFrame
 from qasync import QEventLoop
 from qfluentwidgets import (
     BodyLabel,
@@ -31,7 +31,8 @@ from qfluentwidgets import (
     VBoxLayout,
 )
 
-from apis import (
+from utils import get_category_level_1, get_category_level_2, glob_file_in_folder
+from .apis import (
     add_goods,
     get_captcha_image,
     get_category,
@@ -39,7 +40,6 @@ from apis import (
     test_login,
     upload_file,
 )
-from utils import get_category_level_1, get_category_level_2, glob_file_in_folder
 
 
 class Main(QWidget):
@@ -226,6 +226,26 @@ class LoginForm(QWidget):
 class DataForm(QWidget):
     def __init__(self, path_data):
         super().__init__()
+        self.start_edit = LineEdit()
+        self.end_edit = LineEdit()
+        self.reset_button = PushButton(text="重置")
+        self.load_button = PushButton(text="加载")
+        self.jump_button = PushButton(text="跳转到")
+        self.jump_edit = LineEdit()
+        self.pre_button = PushButton(text="上一条")
+        self.next_button = PushButton(text="下一条")
+        self.upload_button = PushButton(text="上传")
+        self.detail_label = BodyLabel(text="详细信息")
+        self.weight_edit = LineEdit()
+        self.raw_level_1 = BodyLabel(text="无")
+        self.level_1_select = ComboBox()
+        self.raw_level_2 = BodyLabel(text="无")
+        self.level_2_select = ComboBox()
+        self.poster_url_list = ListWidget()
+        self.detail_url_list = ListWidget()
+        self.table_widget = TableWidget()
+        self.current_level_1_name, self.level_1_index = None, None
+        self.current_level_2_name, self.level_2_index = None, None
         self.table_data = None
         self.black_list = None
         self.category = None
@@ -449,7 +469,7 @@ class DataForm(QWidget):
         start_time = time.time()
         self.posts, self.details = glob_file_in_folder(self.image_folder)
         loguru.logger.info(f"glob_file_in_folder cost {
-                           time.time() - start_time:.2f}s")
+        time.time() - start_time:.2f}s")
 
         for i in self.posts:
             i = str(i)
@@ -539,28 +559,19 @@ class DataForm(QWidget):
         # Header horizontal layout
         header_layout = QHBoxLayout()
 
-        self.start_edit = LineEdit()
-        self.end_edit = LineEdit()
         self.start_edit.setPlaceholderText("开始序号")
         self.end_edit.setPlaceholderText("结束序号")
 
-        self.reset_button = PushButton(text="重置")
         self.reset_button.clicked.connect(self.reset)
-        self.load_button = PushButton(text="加载")
         self.load_button.clicked.connect(self.load)
 
-        self.jump_button = PushButton(text="跳转到")
-        self.jump_edit = LineEdit()
         self.jump_edit.setPlaceholderText("跳转到")
         self.jump_button.clicked.connect(
             lambda: self.jmp(self.jump_edit.text()))
 
-        self.pre_button = PushButton(text="上一条")
         self.pre_button.clicked.connect(self.pre)
-        self.next_button = PushButton(text="下一条")
         self.next_button.clicked.connect(self.nxt)
 
-        self.upload_button = PushButton(text="上传")
         self.upload_button.clicked.connect(self.upload)
 
         header_layout.addWidget(self.reset_button)
@@ -579,12 +590,10 @@ class DataForm(QWidget):
 
         category_layout = VBoxLayout(self)
         category_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.detail_label = BodyLabel(text="详细信息")
         self.detail_label.setMaximumHeight(20)
         category_layout.addWidget(self.detail_label)
 
         weight_layout = QHBoxLayout()
-        self.weight_edit = LineEdit()
         self.weight_edit.setText("1")
 
         self.weight_edit.setMaximumWidth(100)
@@ -593,8 +602,6 @@ class DataForm(QWidget):
         category_layout.addLayout(weight_layout)
 
         level_1_layout = QHBoxLayout()
-        self.raw_level_1 = BodyLabel(text="无")
-        self.level_1_select = ComboBox()
 
         self.level_1_select.currentTextChanged.connect(
             self.level_1_select_change)
@@ -607,8 +614,6 @@ class DataForm(QWidget):
         level_1_layout.addWidget(self.level_1_select)
 
         level_2_layout = QHBoxLayout()
-        self.raw_level_2 = BodyLabel(text="无")
-        self.level_2_select = ComboBox()
         self.level_2_select.currentTextChanged.connect(
             self.level_2_select_change)
         self.raw_level_2.setAlignment(
@@ -634,8 +639,6 @@ class DataForm(QWidget):
         url_info_label_layout.addWidget(BodyLabel(text="详情图"))
 
         url_info_layout = QHBoxLayout()
-        self.poster_url_list = ListWidget()
-        self.detail_url_list = ListWidget()
         self.poster_url_list.setMinimumHeight(300)
         self.detail_url_list.setMinimumHeight(300)
 
@@ -670,7 +673,6 @@ class DataForm(QWidget):
             "代发价",
         ]
 
-        self.table_widget = TableWidget()
         self.table_widget.setMaximumHeight(100)
         self.table_widget.setRowCount(1)
         self.table_widget.setColumnCount(len(headers))

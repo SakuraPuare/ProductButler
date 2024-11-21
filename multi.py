@@ -1,33 +1,17 @@
 import asyncio
-import os
-import pathlib
+import importlib
 import sys
-import time
 
-import loguru
-import pandas as pd
-from pandas import DataFrame
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
-    QFileDialog,
-    QFormLayout,
-    QHBoxLayout,
-    QTableWidgetItem,
     QWidget,
 )
 from qasync import QEventLoop
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
-    Dialog,
     InfoBar,
-    LineEdit,
-    ListWidget,
-    PasswordLineEdit,
     PushButton,
-    TableWidget,
     VBoxLayout,
 )
 
@@ -38,12 +22,16 @@ class StartWindow(QWidget):
     def __init__(self):
         super(StartWindow, self).__init__()
 
+        self.label = None
+        self.platform_combo = None
+        self.start_button = None
+        self.new_window = None
         self.setWindowTitle("选择平台")
         self.resize(400, 200)
 
-        self.initUI()
+        self.init_ui()
 
-    def initUI(self):
+    def init_ui(self):
         layout = VBoxLayout(self)
 
         self.label = BodyLabel("请选择要对接的平台:")
@@ -69,10 +57,14 @@ class StartWindow(QWidget):
             platform_info = PLATFORMS.get(selected_platform)
             if platform_info:
                 # 创建对应平台的实例
-                platform_instance = platform_info()  # 这里可能传入参数，视需要而定
+                # platform_instance = platform_info()  # 这里可能传入参数，视需要而定
+
+                # importlib
+                # module_name, class_name = platform_info.rsplit(".", 1)
+                module = importlib.import_module(platform_info)
 
                 self.close()
-                self.new_window = platform_instance
+                self.new_window = module.Main()
                 self.new_window.show()
             else:
                 InfoBar.warning(self, "警告", "该平台未定义!")
@@ -81,12 +73,15 @@ class StartWindow(QWidget):
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    loop = QEventLoop(app)
-    asyncio.set_event_loop(loop)
+    try:
+        app = QApplication(sys.argv)
+        loop = QEventLoop(app)
+        asyncio.set_event_loop(loop)
 
-    ex = StartWindow()
-    ex.show()
+        ex = StartWindow()
+        ex.show()
 
-    with loop:
-        loop.run_forever()
+        with loop:
+            loop.run_forever()
+    except KeyboardInterrupt:
+        exit(0)

@@ -1,5 +1,3 @@
-from .honglitong import Main as Honglitong
-
 PLATFORMS = {
-    "宏利通": Honglitong,
+    "宏利通": "upload.honglitong",
 }

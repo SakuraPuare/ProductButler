@@ -17,6 +17,8 @@ def is_image(byte: bytes) -> bool:
         Image.open(io.BytesIO(byte))
         return True
     except Exception as e:
+        import loguru
+        loguru.logger.error(e)
         return False
 
 
@@ -192,7 +194,6 @@ def find_files(directory):
 def save_cookies(httpx_cookies: 'httpx.Cookies', file_path: str = "cookies.json"):
     import json
 
-    import httpx
     with open(file_path, 'w', encoding='u8') as f:
         json.dump(dict(httpx_cookies), f)
 
@@ -211,14 +212,12 @@ def load_cookies(file_path: str = "cookies.json") -> 'httpx.Cookies':
 
 
 def get_category_level_1(category: 'Category', string: str):
-    import json
     items = list(category.keys())
     idx = find_closest_string(string, items)
     return items[idx], category[items[idx]].get("level")
 
 
 def get_category_level_2(category: 'Category', level_1: str, string: str):
-    import json
     items = list(category[level_1]["children"].keys())
     idx = find_closest_string(string, items)
     return items[idx], category[level_1]["children"][items[idx]].get("level")
