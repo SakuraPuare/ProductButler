@@ -5,9 +5,9 @@ import time
 import aiofiles
 from bs4 import BeautifulSoup
 
-from https import reload_cookies
 from utils import load_cookies, save_cookies
 from .https import get, post
+from .https import reload_cookies
 from .typehints import Category
 
 default_data = {

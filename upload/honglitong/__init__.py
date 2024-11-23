@@ -31,7 +31,7 @@ from qfluentwidgets import (
     VBoxLayout,
 )
 
-from utils import get_category_level_1, get_category_level_2, glob_file_in_folder
+from utils import glob_file_in_folder
 from .apis import (
     add_goods,
     get_captcha_image,
@@ -40,6 +40,7 @@ from .apis import (
     test_login,
     upload_file,
 )
+from .utils import get_category_level_1, get_category_level_2
 
 
 class Main(QWidget):

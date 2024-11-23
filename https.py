@@ -31,3 +31,11 @@ async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -
             response = await client.get(url, params=params, headers=headers, *args, **kwargs)
             loguru.logger.info(f'[GET] {url} {response.status_code}')
             return response
+
+
+async def put(url, headers: dict = None, *args, **kwargs) -> httpx.Response:
+    async with limit:
+        async with httpx.AsyncClient(verify=False, follow_redirects=True, timeout=timeout) as client:
+            response = await client.put(url, headers=headers, *args, **kwargs)
+            loguru.logger.info(f'[PUT] {url} {response.status_code}')
+            return response

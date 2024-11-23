@@ -1,6 +1,8 @@
 import pathlib
 import re
 
+import httpx
+
 post_re = re.compile(r'主图')
 detail_re = re.compile(r'详情')
 image_re = re.compile(r'images')
@@ -161,7 +163,7 @@ def find_closest_string(target, string_list):
     return closest_idx
 
 
-def find_files(directory):
+def find_files(directory) -> list[str]:
     import os
 
     file_paths = []

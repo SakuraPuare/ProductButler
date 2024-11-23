@@ -47,11 +47,7 @@ class StartWindow(QWidget):
         if selected_platform:
             platform_info = PLATFORMS.get(selected_platform)
             if platform_info:
-                # 创建对应平台的实例
-                # platform_instance = platform_info()  # 这里可能传入参数，视需要而定
-
                 # importlib
-                # module_name, class_name = platform_info.rsplit(".", 1)
                 module = importlib.import_module(platform_info)
 
                 self.close()
