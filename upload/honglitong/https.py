@@ -6,6 +6,7 @@ import loguru
 
 from https import get as base_get
 from https import post as base_post
+from utils import load_cookies
 
 base_headers = {
     'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -21,6 +22,8 @@ base_headers = {
     'X-Requested-With': 'XMLHttpRequest',
 }
 
+cookies = load_cookies()
+
 
 async def post(url, data, headers: dict = None, *args, **kwargs) -> httpx.Response:
     new_header = headers
@@ -28,8 +31,6 @@ async def post(url, data, headers: dict = None, *args, **kwargs) -> httpx.Respon
         new_header.update(headers)
         try:
             response = await base_post(url, data, headers, *args, **kwargs)
-            loguru.logger.info(f'[POST] {url} {str(data)[:15]} {
-            response.status_code}')
             if '登录' in response.text:
                 loguru.logger.error(f'需要登录！')
                 raise Exception(f'需要登录！')
@@ -50,7 +51,6 @@ async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -
 
     try:
         response = await base_get(url, params=params, headers=new_headers, *args, **kwargs)
-        loguru.logger.info(f'[GET] {url} {response.status_code}')
 
         assert '登录' not in response.text, '需要登录！'
         return response
@@ -61,3 +61,8 @@ async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -
         loguru.logger.error(e)
         time.sleep(1)
         return await base_get(url, params, *args, **kwargs)
+
+
+def reload_cookies():
+    global cookies
+    cookies = load_cookies()
