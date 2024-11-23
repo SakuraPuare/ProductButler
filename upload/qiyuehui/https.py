@@ -7,8 +7,38 @@ import loguru
 from https import get as base_get
 from https import post as base_post
 
+
+def update_token() -> str:
+    import os
+
+    if not os.path.exists('x-token.token'):
+        return ''
+
+    global base_headers
+    with open('x-token.token', 'r') as f:
+        token = f.read().strip()
+    base_headers.update({'X-Token': token})
+    return token
+
+
 base_headers = {
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'zh-CN,zh;q=0.9',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/json;charset=UTF-8',
+    'DNT': '1',
+    'Origin': 'https://mall.zlqiyuehui.com',
+    'Referer': 'https://mall.zlqiyuehui.com/',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site',
+    'X-Token': '',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'sec-ch-ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
 }
+update_token()
 
 
 async def post(url, data, headers: dict = None, *args, **kwargs) -> httpx.Response:
@@ -17,8 +47,10 @@ async def post(url, data, headers: dict = None, *args, **kwargs) -> httpx.Respon
         new_header.update(headers)
         try:
             response = await base_post(url, data, headers, *args, **kwargs)
-            loguru.logger.info(f'[POST] {url} {str(data)[:15]} {
-            response.status_code}')
+
+            json = response.json()
+
+            assert json.get('errno') == 0, json.get('errmsg')
             return response
         except JSONDecodeError as e:
             raise Exception(f'JSONDecodeError: {e} {response.text}')
@@ -35,8 +67,10 @@ async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -
 
     try:
         response = await base_get(url, params=params, headers=new_headers, *args, **kwargs)
-        loguru.logger.info(f'[GET] {url} {response.status_code}')
 
+        json = response.json()
+
+        assert json.get('errno') == 0, json.get('errmsg')
         return response
     except AssertionError as e:
         loguru.logger.error(e)
