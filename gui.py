@@ -2,18 +2,9 @@ import asyncio
 import importlib
 import sys
 
-from PySide6.QtWidgets import (
-    QApplication,
-    QWidget,
-)
+from PySide6.QtWidgets import QApplication, QWidget
 from qasync import QEventLoop
-from qfluentwidgets import (
-    BodyLabel,
-    ComboBox,
-    InfoBar,
-    PushButton,
-    VBoxLayout,
-)
+from qfluentwidgets import BodyLabel, ComboBox, InfoBar, PushButton, VBoxLayout
 
 from upload import PLATFORMS
 

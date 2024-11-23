@@ -32,9 +32,9 @@ def is_browser_installed(browser_name):
 def launch_browser():
     browsers = {
         "chrome": (
-        "selenium.webdriver.chrome.service", "selenium.webdriver.chrome.options", "webdriver_manager.chrome"),
+            "selenium.webdriver.chrome.service", "selenium.webdriver.chrome.options", "webdriver_manager.chrome"),
         "firefox": (
-        "selenium.webdriver.firefox.service", "selenium.webdriver.firefox.options", "webdriver_manager.firefox"),
+            "selenium.webdriver.firefox.service", "selenium.webdriver.firefox.options", "webdriver_manager.firefox"),
         "edge": ("selenium.webdriver.edge.service", "selenium.webdriver.edge.options", "webdriver_manager.microsoft"),
     }
 
