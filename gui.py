@@ -48,7 +48,7 @@ class StartWindow(QWidget):
             platform_info = PLATFORMS.get(selected_platform)
             if platform_info:
                 # importlib
-                module = importlib.import_module(platform_info)
+                module = importlib.import_module(platform_info + '.gui')
 
                 self.close()
                 self.new_window = module.Main()

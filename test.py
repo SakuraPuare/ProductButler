@@ -1,3 +1,4 @@
+import asyncio
 import pathlib
 
 if __name__ == "__main__":
@@ -7,6 +8,6 @@ if __name__ == "__main__":
 
     import upload.qiyuehui.cos as cos
 
-    ret = cos.upload_file(pathlib.Path('verify.jpg'))
+    ret = asyncio.run(cos.upload_file(pathlib.Path(r'C:\Users\SakuraPuare\Pictures\wallhaven-g8orp7.png')))
 
     print(ret)

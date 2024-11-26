@@ -3,6 +3,9 @@ import re
 
 import httpx
 
+from files import managed_exists, managed_open
+from typehints import Category
+
 post_re = re.compile(r'主图')
 detail_re = re.compile(r'详情')
 image_re = re.compile(r'images')
@@ -177,18 +180,29 @@ def find_files(directory) -> list[str]:
 def save_cookies(httpx_cookies: 'httpx.Cookies', file_path: str = "cookies.json"):
     import json
 
-    with open(file_path, 'w', encoding='u8') as f:
+    with managed_open(file_path, 'w', encoding='u8') as f:
         json.dump(dict(httpx_cookies), f)
 
 
 def load_cookies(file_path: str = "cookies.json") -> 'httpx.Cookies':
     import json
-    import os
 
     import httpx
 
-    if not os.path.exists(file_path):
+    if not managed_exists(file_path):
         return httpx.Cookies()
 
-    with open(file_path, 'r', encoding='u8') as f:
+    with managed_open(file_path, 'r', encoding='u8') as f:
         return httpx.Cookies(json.load(f))
+
+
+def get_category_level_1(category: 'Category', string: str):
+    items = list(category.keys())
+    idx = find_closest_string(string, items)
+    return items[idx], category[items[idx]].get("level")
+
+
+def get_category_level_2(category: 'Category', level_1: str, string: str):
+    items = list(category[level_1]["children"].keys())
+    idx = find_closest_string(string, items)
+    return items[idx], category[level_1]["children"][items[idx]].get("level")

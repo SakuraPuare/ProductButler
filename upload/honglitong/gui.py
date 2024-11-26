@@ -1,5 +1,4 @@
 import asyncio
-import os
 import pathlib
 import sys
 import time
@@ -31,16 +30,16 @@ from qfluentwidgets import (
     VBoxLayout,
 )
 
-from utils import glob_file_in_folder
+from files import get_new_name, managed_exists, managed_open
+from utils import get_category_level_1, get_category_level_2, glob_file_in_folder
 from .apis import (
     add_goods,
+    check_login,
     get_captcha_image,
     get_category,
     login,
-    test_login,
     upload_file,
 )
-from .utils import get_category_level_1, get_category_level_2
 
 
 class Main(QWidget):
@@ -104,17 +103,13 @@ class Main(QWidget):
             return
 
         # test the validity of the cookies
-        try:
-            await test_login()
-        except Exception as e:
-            loguru.logger.error(str(e))
+        if not await check_login():
             self.login_form = LoginForm((self.file_name, self.image_path))
-            self.close()
             self.login_form.show()
         else:
             self.data_form = DataForm((self.file_name, self.image_path))
-            self.close()
             self.data_form.show()
+        self.close()
 
     def select_excel_file(self):
         self.file_name, _ = QFileDialog.getOpenFileName(
@@ -152,11 +147,11 @@ class LoginForm(QWidget):
 
         # Create input fields for account and password
         self.account_input = LineEdit(self)
-        self.account_input.setText("gys8")
+
         self.account_input.setPlaceholderText("输入账号")
 
         self.password_input = PasswordLineEdit(self)
-        self.password_input.setText("881125")
+
         self.password_input.setPlaceholderText("输入密码")
 
         self.captcha_input = LineEdit(self)
@@ -201,7 +196,7 @@ class LoginForm(QWidget):
                 parent=self, title="Warning", content=f"验证码加载失败，请重试 {e}"
             )
 
-        pixmap = QPixmap("verify.jpg")
+        pixmap = QPixmap(get_new_name("verify.jpg"))
         self.captcha_label.setPixmap(pixmap)
         self.captcha_label.setAlignment(Qt.AlignCenter)
 
@@ -372,7 +367,7 @@ class DataForm(QWidget):
             self.nxt()
             loguru.logger.info(f"[{ids}] success")
         finally:
-            with open("black_list.txt", "a+", encoding='u8') as f:
+            with managed_open("black_list.txt", "a+", encoding='u8') as f:
                 f.write(f"{ids}\n")
             self.is_upload = False
 
@@ -538,14 +533,14 @@ class DataForm(QWidget):
         # flush category
         self.category = await get_category()
 
-        if not os.path.exists("black_list.txt"):
-            with open("black_list.txt", "w", encoding='u8') as f:
+        if not managed_exists("black_list.txt"):
+            with managed_open("black_list.txt", "w", encoding='u8') as f:
                 f.write("")
 
-        with open("black_list.txt", "r", encoding='u8') as f:
+        with managed_open("black_list.txt", "r", encoding='u8') as f:
             self.black_list: list[int] = list(map(int, f.readlines()))
 
-        # with open("category.json", "r", encoding='u8') as f:
+        # with managed_open("category.json", "r", encoding='u8') as f:
         #     category = json.load(f)
 
         self.table_data = self.read_table_data(self.file_name)

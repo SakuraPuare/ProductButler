@@ -6,8 +6,9 @@ import loguru
 import pandas
 
 from apis import add_goods, upload_file
+from files import managed_open
+from typehints import Category
 from utils import glob_file_in_folder
-from .typehints import Category
 from .utils import get_category_level_1, get_category_level_2
 
 
@@ -88,7 +89,7 @@ async def main():
         except Exception as e:
             loguru.logger.error(str(type(e)), e)
         finally:
-            with open("black_list.txt", "a", encoding='u8') as f:
+            with managed_open("black_list.txt", "a", encoding='u8') as f:
                 f.write(f"{ids}\n")
 
 
@@ -100,10 +101,10 @@ if __name__ == "__main__":
     data = pandas.read_excel(file_name)
 
     ranges = 1869, 1961
-    with open("black_list.txt", "r", encoding='u8') as f:
+    with managed_open("black_list.txt", "r", encoding='u8') as f:
         black_list: list[int] = list(map(int, f.readlines()))
 
-    with open("category.json", "r", encoding='u8') as f:
+    with managed_open("category.json", "r", encoding='u8') as f:
         category: Category = json.load(f)
     # find data id in ranges
     data = data.loc[(data["序号"] >= ranges[0]) & (data["序号"] <= ranges[1])]

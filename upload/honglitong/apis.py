@@ -3,12 +3,13 @@ import pathlib
 import time
 
 import aiofiles
+import loguru
 from bs4 import BeautifulSoup
 
+from files import managed_open
+from typehints import Category
 from utils import load_cookies, save_cookies
-from .https import get, post
-from .https import reload_cookies
-from .typehints import Category
+from .https import get, post, reload_cookies
 
 default_data = {
     "buyNotice": "<p>购买须知</p>",
@@ -101,10 +102,9 @@ async def upload_file(types: str, path: pathlib.Path) -> str:
 
 
 async def get_captcha_image():
-    import httpx
-    response = httpx.get(
+    response = await get(
         "http://hlt-admin.honglitong.cn/login/verify.html", params={"t": time.time()})
-    with open("verify.jpg", "wb") as f:
+    with managed_open("verify.jpg", "wb") as f:
         f.write(response.content)
     save_cookies(response.cookies)
 
@@ -125,6 +125,7 @@ async def login(account: str, password: str, captcha: str):
 
     response = httpx.post('http://hlt-admin.honglitong.cn/login/ajax/auth',
                           cookies=cookies, headers=headers, data=data, verify=False)
+    loguru.logger.debug(response.text)
     cookies.update(response.cookies)
 
     if response.text:
@@ -138,8 +139,12 @@ async def login(account: str, password: str, captcha: str):
     reload_cookies()
 
 
-async def test_login():
-    await get("http://hlt-admin.honglitong.cn/goods/add/page")
+async def check_login():
+    try:
+        await get("http://hlt-admin.honglitong.cn/goods/add/page")
+    except Exception as e:
+        return False
+    return True
 
 
 async def get_category() -> Category:
@@ -180,7 +185,7 @@ async def get_category() -> Category:
             'children': child
         }
 
-    with open("category.json", "w", encoding='u8') as f:
+    with managed_open("category.json", "w", encoding='u8') as f:
         import json
         json.dump(category_list, f, ensure_ascii=False, indent=4)
 
@@ -195,7 +200,7 @@ if __name__ == "__main__":
     # import json
 
     # cat = asyncio.run(get_category())
-    # with open("category.json", "w", encoding='u8') as f:
+    # with managed_open("category.json", "w", encoding='u8') as f:
     #     json.dump(cat, f, ensure_ascii=False, indent=4)
 
     # resp = asyncio.run(upload_file('poster', pathlib.Path('企悦汇选品1038-1197 (2)/未命名文件夹 2/1038.儿童内衣专用洗衣液300ml/主图/81688faeabc9cbd0a1d92ddd3df1887.jpg')))

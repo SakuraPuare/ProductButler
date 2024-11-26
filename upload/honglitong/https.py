@@ -29,19 +29,19 @@ async def post(url, data, headers: dict = None, *args, **kwargs) -> httpx.Respon
     new_header = headers
     if headers is not None:
         new_header.update(headers)
-        try:
-            response = await base_post(url, data, headers, *args, **kwargs)
-            if '登录' in response.text:
-                loguru.logger.error(f'需要登录！')
-                raise Exception(f'需要登录！')
-            response.json()
-            return response
-        except JSONDecodeError as e:
-            raise Exception(f'JSONDecodeError: {e} {response.text}')
-        except Exception as e:
-            loguru.logger.error(str(type(e)), e)
-            time.sleep(1)
-            return await base_post(url, data, headers, *args, **kwargs)
+    try:
+        response = await base_post(url, data, headers, cookies=cookies, *args, **kwargs)
+        if '登录' in response.text:
+            loguru.logger.error(f'需要登录！')
+            raise Exception(f'需要登录！')
+        response.json()
+        return response
+    except JSONDecodeError as e:
+        raise Exception(f'JSONDecodeError: {e} {response.text}')
+    except Exception as e:
+        loguru.logger.error(str(type(e)), e)
+        time.sleep(1)
+        return await base_post(url, data, headers, cookies=cookies, *args, **kwargs)
 
 
 async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -> httpx.Response:
@@ -50,7 +50,7 @@ async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -
         new_headers.update(headers)
 
     try:
-        response = await base_get(url, params=params, headers=new_headers, *args, **kwargs)
+        response = await base_get(url, params=params, headers=new_headers, cookies=cookies, *args, **kwargs)
 
         assert '登录' not in response.text, '需要登录！'
         return response
@@ -60,7 +60,7 @@ async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -
     except Exception as e:
         loguru.logger.error(e)
         time.sleep(1)
-        return await base_get(url, params, *args, **kwargs)
+        return await base_get(url, params, cookies=cookies, *args, **kwargs)
 
 
 def reload_cookies():

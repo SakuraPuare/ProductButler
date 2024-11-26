@@ -10,22 +10,22 @@ base_dir = pathlib.Path(__file__).parent / 'files'
 
 def get_new_name(name):
     stack = traceback.extract_stack()
-
+    found = False
     for frame in reversed(stack):
-        if frame.filename != __file__:
+        if 'upload' in frame.filename:
+            found = True
             break
     file_path = pathlib.Path(frame.filename)
 
     save_path = copy.deepcopy(base_dir)
 
-    for i in range(len(file_path.parts) - 1, -1, -1):
-        if file_path.parts[i] == 'upload':
-            save_path = save_path / file_path.parts[i + 1]
-            break
+    if found:
+        idx = file_path.parts.index('upload')
+        save_path = save_path / file_path.parts[idx + 1]
 
     save_path.mkdir(exist_ok=True, parents=True)
 
-    save_path = save_path.with_name(name)
+    save_path = save_path / name
 
     return save_path
 
