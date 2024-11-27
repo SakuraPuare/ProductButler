@@ -25,12 +25,13 @@ base_headers = {
 cookies = load_cookies()
 
 
-async def post(url, data, headers: dict = None, *args, **kwargs) -> httpx.Response:
-    new_header = headers
+async def post(url, headers: dict = None, *args, **kwargs) -> httpx.Response:
+    new_headers = base_headers
     if headers is not None:
-        new_header.update(headers)
+        new_headers.update(headers)
+
     try:
-        response = await base_post(url, data, headers, cookies=cookies, *args, **kwargs)
+        response = await base_post(url, headers=new_headers, cookies=cookies, *args, **kwargs)
         if '登录' in response.text:
             loguru.logger.error(f'需要登录！')
             raise Exception(f'需要登录！')
@@ -41,7 +42,7 @@ async def post(url, data, headers: dict = None, *args, **kwargs) -> httpx.Respon
     except Exception as e:
         loguru.logger.error(str(type(e)), e)
         time.sleep(1)
-        return await base_post(url, data, headers, cookies=cookies, *args, **kwargs)
+        return await base_post(url, headers=new_headers, cookies=cookies, *args, **kwargs)
 
 
 async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -> httpx.Response:

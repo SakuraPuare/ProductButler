@@ -1,45 +1,46 @@
 import asyncio
+import itertools
 import pathlib
 import sys
 import time
 
 import loguru
 import pandas as pd
+from pandas import DataFrame
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
-    QFormLayout,
     QHBoxLayout,
     QTableWidgetItem,
     QWidget,
 )
-from pandas import DataFrame
-from qasync import QEventLoop
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
-    Dialog,
     InfoBar,
     LineEdit,
     ListWidget,
-    PasswordLineEdit,
     PushButton,
     TableWidget,
     VBoxLayout,
 )
 
-from files import get_new_name, managed_exists, managed_open
-from utils import get_category_level_1, get_category_level_2, glob_file_in_folder
+from files import managed_exists, managed_open
+from utils import glob_file_in_folder
+
 from .apis import (
-    add_goods,
+    add_vip_goods,
     check_login,
-    get_captcha_image,
+    create,
     get_category,
+    get_goods_detail,
+    get_goods_list,
     login,
-    upload_file,
+    set_vip_price,
 )
+from .cos import upload_file
+from .utils import get_keyword_category, get_price_category
 
 
 class Main(QWidget):
@@ -57,8 +58,8 @@ class Main(QWidget):
 
     def init_ui(self):
         # Create layout
-
         layout = VBoxLayout(self)
+
         self.enter_button = PushButton("确定", self)
         self.enter_button.clicked.connect(self.enter)
         # listen to the enter key
@@ -102,21 +103,18 @@ class Main(QWidget):
             InfoBar.error(title="Error", content="请选择图片文件夹", parent=self)
             return
 
-        # test the validity of the cookies
         if not await check_login():
-            self.login_form = LoginForm((self.file_name, self.image_path))
-            self.login_form.show()
-        else:
-            self.data_form = DataForm((self.file_name, self.image_path))
-            self.data_form.show()
+            login()
+        self.data_form = DataForm((self.file_name, self.image_path))
         self.close()
+        self.data_form.show()
 
     def select_excel_file(self):
         self.file_name, _ = QFileDialog.getOpenFileName(
             self,
             "选择Excel文件",
             "",
-            "Excel Files (*.xlsx);;All Files (*)",
+            "Excel Files (*.xls,*.xlsx);All Files (*)",
         )
         if self.file_name:
             self.excel_label.setText(f"已选择Excel文件: {self.file_name}")
@@ -125,98 +123,6 @@ class Main(QWidget):
         self.image_path = QFileDialog.getExistingDirectory(self, "选择图片文件夹")
         if self.image_path:
             self.image_label.setText(f"已选择图片文件夹: {self.image_path}")
-
-
-class LoginForm(QWidget):
-    def __init__(self, path_data):
-        super().__init__()
-        self.captcha_label = None
-        self.captcha_input = None
-        self.password_input = None
-        self.account_input = None
-        self.path_data = path_data
-
-        self.init_ui()
-
-    def init_ui(self):
-        # Create layout
-        layout = VBoxLayout(self)
-
-        # Create a form layout for user input
-        form_layout = QFormLayout()
-
-        # Create input fields for account and password
-        self.account_input = LineEdit(self)
-
-        self.account_input.setPlaceholderText("输入账号")
-
-        self.password_input = PasswordLineEdit(self)
-
-        self.password_input.setPlaceholderText("输入密码")
-
-        self.captcha_input = LineEdit(self)
-        self.captcha_input.setPlaceholderText("输入验证码")
-
-        # Add input fields to the form layout
-        form_layout.addRow("账号:", self.account_input)
-        form_layout.addRow("密码:", self.password_input)
-        form_layout.addRow("验证码:", self.captcha_input)
-
-        # Create a label for displaying the captcha image
-        self.captcha_label = BodyLabel(self)
-        asyncio.ensure_future(self.load_captcha_image())
-        self.captcha_label.mousePressEvent = self.reload
-
-        # Create a login button
-        login_button = PushButton("Login", self)
-        login_button.clicked.connect(self.login)
-
-        # Add widgets to the main layout
-        layout.addLayout(form_layout)
-        layout.addWidget(self.captcha_label)
-        layout.addWidget(login_button)
-
-        # Set the layout for the window
-        self.setLayout(layout)
-
-        # Set the main window properties
-        self.setWindowTitle("Login Window")
-        self.resize(400, 300)
-        # self.setGeometry(300, 300, 400, 300)
-
-    def reload(self, _event):
-        asyncio.ensure_future(self.load_captcha_image())
-
-    async def load_captcha_image(self):
-        try:
-            await get_captcha_image()
-        except Exception as e:
-            # If the captcha image cannot be loaded, warn the user
-            InfoBar.warning(
-                parent=self, title="Warning", content=f"验证码加载失败，请重试 {e}"
-            )
-
-        pixmap = QPixmap(get_new_name("verify.jpg"))
-        self.captcha_label.setPixmap(pixmap)
-        self.captcha_label.setAlignment(Qt.AlignCenter)
-
-    def login(self):
-        asyncio.ensure_future(self._login())
-
-    async def _login(self):
-        # Placeholder login function
-        account = self.account_input.text()
-        password = self.password_input.text()
-
-        try:
-            await login(account, password, self.captcha_input.text())
-        except Exception as e:
-            InfoBar.error(title="Error", content=str(e))
-        else:
-            InfoBar.success(title="Success", content="登录成功")
-            self.data_form = DataForm(self.path_data)
-            self.close()
-            self.data_form.show()
 
 
 class DataForm(QWidget):
@@ -240,22 +146,20 @@ class DataForm(QWidget):
         self.poster_url_list = ListWidget()
         self.detail_url_list = ListWidget()
         self.table_widget = TableWidget()
-        self.current_level_1_name, self.level_1_index = None, None
-        self.current_level_2_name, self.level_2_index = None, None
+
         self.table_data = None
         self.black_list = None
         self.category = None
         self.details = None
         self.posts = None
         self.image_folder = None
-        self.level_2_index = None
-        self.matched_level_2_name = None
-        self.level_1_index = None
-        self.matched_level_1_name = None
+
         self.end = None
         self.start = None
         self.is_upload = False
         self.file_name, self.image_path = path_data
+
+        self.category_widget = None
 
         self.image_folder_list = list(pathlib.Path(self.image_path).iterdir())
 
@@ -275,7 +179,7 @@ class DataForm(QWidget):
         asyncio.ensure_future(self._upload())
 
     async def _upload(self):
-        self.is_upload = True
+        self.is_upload = False
         if (
                 not self.image_folder
                 or self.loc == -1
@@ -285,79 +189,99 @@ class DataForm(QWidget):
             InfoBar.error(title="Error", content="图片未载入", parent=self)
             return
 
-        ids = self.table_widget.item(0, 0).text()  # 序号
-        brand = self.table_widget.item(0, 3).text()  # 品牌
-        goods_name = self.table_widget.item(0, 4).text()  # 品名
-        bar_code = self.table_widget.item(0, 5).text()  # 条码
-        weight = self.weight_edit.text()  # 重量
-        bid_price = self.table_widget.item(0, 7).text()  # 对广行达结算价
-        market_price = self.table_widget.item(0, 8).text()  # 含税运一件代发价
+        data = [self.table_widget.item(0, i).text()
+                for i in range(self.table_widget.columnCount())]
 
-        matched = (
-            self.matched_level_1_name != self.current_level_1_name,
-            self.matched_level_2_name != self.current_level_2_name,
-        )
-        if any(matched):
-            raw_level_1 = self.raw_level_1.text()
-            raw_level_2 = self.raw_level_2.text()
-            dialog = Dialog(
-                "你修改了分类信息",
-                "你修改了分类信息，是否要以此修改后续所有的内容？\n\n"
-                + f"   '{raw_level_1}' -> '{self.current_level_1_name}' \n"
-                + f"   '{raw_level_2}' -> '{self.current_level_2_name}' ",
-                parent=self,
-            )
+        ids, brand, goods_name, bar_code, market_price, cost_price, counter_price, v1_price, v2_price, v3_price, v4_price = data
 
-            if dialog.exec() == Dialog.Accepted:
-                if all(matched):
-                    self.table_data.loc[
-                        (self.table_data["一级分类"] == raw_level_1)
-                        & (self.table_data["二级分类"] == raw_level_2),
-                        "一级分类",
-                    ] = self.current_level_1_name
-                    self.table_data.loc[
-                        (self.table_data["一级分类"] == self.current_level_1_name)
-                        & (self.table_data["二级分类"] == raw_level_2),
-                        "二级分类",
-                    ] = self.current_level_2_name
-                else:
-                    if matched[0]:
-                        self.table_data.loc[
-                            (self.table_data["一级分类"] == raw_level_1)
-                            & (self.table_data["二级分类"] == raw_level_2),
-                            "一级分类",
-                        ] = self.current_level_1_name
-                    if matched[1]:
-                        self.table_data.loc[
-                            (self.table_data["一级分类"] == raw_level_1)
-                            & (self.table_data["二级分类"] == raw_level_2),
-                            "二级分类",
-                        ] = self.current_level_2_name
+        weight = self.weight_edit.text()
 
         InfoBar.info(title="上传中", content="请稍等", parent=self)
 
         try:
+        # if True:
             posts_url = await asyncio.gather(
-                *[upload_file("title", i) for i in self.posts]
+                *[upload_file(i) for i in list(self.posts)[:10]]
             )
             details_url = await asyncio.gather(
-                *[upload_file("detail", i) for i in self.details]
+                *[upload_file(i) for i in self.details]
+            )
+            # "市场价","含税代发价","平台价"
+            create_response = await create(
+                posts_url,
+                self.category_list,
+                counter_price,
+                market_price,
+                cost_price,
+                details_url,
+                goods_name,
+                bar_code,
+                weight
             )
 
-            resp = await add_goods(
-                poster_url=posts_url,
-                detail_url=details_url,
-                brand=brand,
-                goods_name=goods_name,
-                market_price=market_price,
-                bid_price=bid_price,
-                weight=weight,
-                level_1=self.level_1_index,
-                level_2=self.level_2_index,
-                bar_code=bar_code,
+            none_vip_goods_list = []
+            page = 1
+            size = 10
+            while True:
+                none_vip_goods_list.extend(await get_goods_list(page=page, size=size))
+                if len(none_vip_goods_list) % size != 0 or not none_vip_goods_list:
+                    break
+                page += 1
+
+            await asyncio.gather(
+                *[add_vip_goods(i.get('Id')) for i in none_vip_goods_list if i.get('Id', None)]
             )
 
-            assert resp.get("success"), resp.get("msg")
+            goods_details = []
+
+            flag = True
+            page = 1
+            size = 10
+            while flag:
+                vip_goods_list = await get_goods_list(page=page, size=size, status=True)
+                for i in vip_goods_list:
+                    detail = await get_goods_detail(i.get('Id'))
+                    price = [detail.get('products', [])[0].get(
+                        f'vip{j}Price', None) for j in range(1, 5)]
+                    if not all(price):
+                        goods_details.append(detail)
+                    else:
+                        flag = False
+                        break
+                page += 1
+
+            index_of_goods_detail = []
+            for i in goods_details:
+                name = i.get('goods', {}).get('name', '')
+                if not self.table_data[self.table_data["品名"].str.contains(name)].empty:
+                    index_of_goods_detail.append(
+                        self.table_data[self.table_data["品名"].str.contains(
+                            name)].index[0]
+                    )
+
+            tasks = []
+            for index, detail in zip(index_of_goods_detail, goods_details):
+                for product in detail.get('products', []):
+                    tasks.append(
+                        set_vip_price(
+                            product.get('id'),
+                            product.get('vendorId'),
+                            product.get('goodsId'),
+                            product.get('price'),
+                            product.get('number'),
+                            product.get('addTime'),
+                            product.get('deleted'),
+                            product.get('specificationCode'),
+                            product.get('costPrice'),
+                            *list(self.table_data.loc[index][[
+                                "v1最终价格",
+                                "v2最终价格",
+                                "v3最终价格",
+                                "v4最终价格",
+                            ]])
+                        )
+                    )
+            await asyncio.gather(*tasks)
 
         except Exception as e:
             InfoBar.error(title="Error", content=str(e), parent=self)
@@ -403,49 +327,43 @@ class DataForm(QWidget):
         # find the data that id = start
         self.jmp(self.start)
 
+    def show_category(self):
+        pass
+
     def update_ui(self):
         self.detail_label.setText(f"详细信息: 已载入{len(self.table_data)}条数据")
 
         # get the line
         row = self.table_data.loc[self.loc]
 
-        # update label
-        self.raw_level_1.setText(row["一级分类"])
-        self.raw_level_2.setText(row["二级分类"])
+        self.category_list = get_price_category(
+            self.category, float(row["平台价"]))
+        self.category_list = get_price_category(
+            self.category, float(row["市场价"]))
+        self.category_list.extend(
+            get_keyword_category(self.category, row["品牌"]))
+        self.category_list.extend(
+            get_keyword_category(self.category, row["品名"]))
 
-        # match the category
-        self.matched_level_1_name, self.level_1_index = get_category_level_1(
-            self.category, row["一级分类"]
-        )
-        self.matched_level_2_name, self.level_2_index = get_category_level_2(
-            self.category, self.matched_level_1_name, row["二级分类"]
-        )
-        # update combobox
-        self.level_1_select.setCurrentText(self.matched_level_1_name)
-        self.level_2_select.setCurrentText(self.matched_level_2_name)
+        self.category_list = [
+            i for i in self.category_list if i not in self.black_list]
+
+        self.update_category()
 
         # update table
-        self.table_widget.setItem(0, 0, QTableWidgetItem(str(row["序号"])))
-        self.table_widget.setItem(0, 1, QTableWidgetItem(str(row["一级分类"])))
-        self.table_widget.setItem(0, 2, QTableWidgetItem(str(row["二级分类"])))
-        self.table_widget.setItem(0, 3, QTableWidgetItem(str(row["品牌"])))
-        self.table_widget.setItem(0, 4, QTableWidgetItem(str(row["品名"])))
-        self.table_widget.setItem(0, 5, QTableWidgetItem(str(row["条码"])))
-        self.table_widget.setItem(0, 6, QTableWidgetItem(str(row["规格"])))
-        self.table_widget.setItem(0, 7, QTableWidgetItem(str(row["对广行达结算价"])))
-        self.table_widget.setItem(0, 8, QTableWidgetItem(str(row["含税运一件代发价"])))
+        for i, header in enumerate(valid_headers):
+            self.table_widget.setItem(
+                0, i, QTableWidgetItem(str(row[header]).strip()))
+
         self.table_widget.resizeColumnsToContents()
 
         # update image
         self.update_image_path_list()
 
-        # do some check
-        if str(row["对广行达结算价"]) == "nan":
-            InfoBar.error(title="Error", content="结算价不能为空", parent=self)
-            return
-        if str(row["含税运一件代发价"]) == "nan":
-            InfoBar.error(title="Error", content="代发价不能为空", parent=self)
-            return
+    def update_category(self):
+        # update category
+        self.category_label.setText(
+            ', '.join([i['name'] for i in self.category_list]))
 
     def update_image_path_list(self):
         self.poster_url_list.clear()
@@ -465,73 +383,48 @@ class DataForm(QWidget):
         start_time = time.time()
         self.posts, self.details = glob_file_in_folder(self.image_folder)
         loguru.logger.info(f"glob_file_in_folder cost {
-        time.time() - start_time:.2f}s")
+            time.time() - start_time:.2f}s")
 
         for i in self.posts:
             i = str(i)
             item_name = i[i.find(str(int(idx))) + len(str(idx)):]
             self.poster_url_list.addItem(item_name)
-            # self.poster_url_list.addItem(str(i).split(str(int(idx)))[-1])
 
         for i in self.details:
             i = str(i)
             item_name = i[i.find(str(int(idx))) + len(str(idx)):]
             self.detail_url_list.addItem(item_name)
-            # self.detail_url_list.addItem(str(i).split(str(int(idx)))[-1])
-
-        pass
 
     @staticmethod
     def read_table_data(file_name) -> DataFrame:
-        df = pd.read_excel(file_name, header=3)
-        # 重新设置列名
-        df.columns = [
-            "序号",
-            "责任人",
-            "一级分类",
-            "二级分类",
-            "品牌",
-            "品名",
-            "条码",
-            "规格",
-            "品牌标价",
-            "淘宝",
-            "链接",
-            "京东",
-            "链接",
-            "其他平台",
-            "链接",
-            "对广行达结算价",
-            "税率",
-            "含税运一件代发价",
-            "上线建议",
-            "供应商公司名称",
-        ]
-        # "序号""一级分类", "二级分类", "品牌", "品名""对广行达结算价" "含税运一件代发价", "上线建议"
+        df = pd.read_excel(file_name, header=0)
+
+        df.columns = table_headers
         data = df[
-            [
-                "序号",
-                "一级分类",
-                "二级分类",
-                "品牌",
-                "品名",
-                "条码",
-                "规格",
-                "对广行达结算价",
-                "含税运一件代发价",
-                "上线建议",
-            ]
+            valid_headers
         ]
-        data = data.loc[data["上线建议"] != "无需上线"]
 
         # 重新设置索引
         data.index = range(len(data))
 
         return data
 
+    def get_price_by_goods_name(self, goods_name):
+        # find 品名 contains goods_name
+        row = self.table_data[self.table_data["品名"].str.contains(goods_name)]
+        data = (self.table_data.loc[row.index[0]][[
+                "v1最终价格",
+                "v2最终价格",
+                "v3最终价格",
+                "v4最终价格",
+                ]])
+        return list(data)
+
     async def init_data(self):
         # flush category
         self.category = await get_category()
+
+        # self.category_widget = Tree(self.category, [])
 
         if not managed_exists("black_list.txt"):
             with managed_open("black_list.txt", "w", encoding='u8') as f:
@@ -545,11 +438,8 @@ class DataForm(QWidget):
 
         self.table_data = self.read_table_data(self.file_name)
 
-        pass
-
     def init_ui(self):
         # Create layout
-
         layout = VBoxLayout(self)
 
         # Header horizontal layout
@@ -595,37 +485,19 @@ class DataForm(QWidget):
         self.weight_edit.setMaximumWidth(100)
         weight_layout.addWidget(BodyLabel(text="重量"))
         weight_layout.addWidget(self.weight_edit)
+
+        category_header_layout = QHBoxLayout()
+        category_header_layout.addWidget(BodyLabel(text="当前选择类别: "))
+        self.category_label = BodyLabel(text="无")
+
+        self.category_button = PushButton("选择类别", self)
+        self.category_button.clicked.connect(self.show_category)
+
+        category_header_layout.addWidget(self.category_label)
+        category_header_layout.addWidget(self.category_button)
+
+        category_layout.addLayout(category_header_layout)
         category_layout.addLayout(weight_layout)
-
-        level_1_layout = QHBoxLayout()
-
-        self.level_1_select.currentTextChanged.connect(
-            self.level_1_select_change)
-        self.raw_level_1.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
-
-        level_1_layout.addWidget(BodyLabel(text="一级分类"))
-        level_1_layout.addWidget(self.raw_level_1)
-        level_1_layout.addWidget(self.level_1_select)
-
-        level_2_layout = QHBoxLayout()
-        self.level_2_select.currentTextChanged.connect(
-            self.level_2_select_change)
-        self.raw_level_2.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
-
-        # update category to combobox
-        for i in self.category.keys():
-            self.level_1_select.addItem(i)
-
-        level_2_layout.addWidget(BodyLabel(text="二级分类"))
-        level_2_layout.addWidget(self.raw_level_2)
-        level_2_layout.addWidget(self.level_2_select)
-
-        category_layout.addLayout(level_1_layout)
-        category_layout.addLayout(level_2_layout)
 
         image_info_layout = VBoxLayout(self)
         image_info_layout.addWidget(BodyLabel(text="图片信息"))
@@ -657,28 +529,13 @@ class DataForm(QWidget):
         # Create a table widget
 
         # Set the table headers
-        headers = [
-            "序号",
-            "一级分类",
-            "二级分类",
-            "品牌",
-            "品名",
-            "条码",
-            "规格",
-            "结算价",
-            "代发价",
-        ]
+        headers = valid_headers
 
         self.table_widget.setMaximumHeight(100)
         self.table_widget.setRowCount(1)
         self.table_widget.setColumnCount(len(headers))
 
         self.table_widget.setHorizontalHeaderLabels(headers)
-
-        # Set the table column width
-        width_list = [50, 80, 80, 150, 350, 150, 220, 100, 100]
-        for i, width in enumerate(width_list):
-            self.table_widget.setColumnWidth(i, width)
 
         # Add the table to the layout
         table_layout.addWidget(self.table_widget)
@@ -692,24 +549,6 @@ class DataForm(QWidget):
         # Set layout to the widget
         self.setLayout(layout)
         self.resize(1200, 800)
-
-    def level_1_select_change(self):
-        level_1_name = self.level_1_select.currentText()
-
-        self.level_2_select.clear()
-        for i in self.category[level_1_name]["children"]:
-            self.level_2_select.addItem(i)
-
-        self.current_level_1_name, self.level_1_index = get_category_level_1(
-            self.category, level_1_name
-        )
-
-    def level_2_select_change(self):
-        level_1_name = self.level_1_select.currentText()
-        level_2_name = self.level_2_select.currentText()
-        self.current_level_2_name, self.level_2_index = get_category_level_2(
-            self.category, level_1_name, level_2_name
-        )
 
     def pre(self):
         if self.loc == -1:
@@ -758,7 +597,53 @@ class DataForm(QWidget):
         InfoBar.info(title="Success", content="已经切换到指定数据", parent=self)
 
 
+table_headers = [
+    "序号",
+    "品牌",
+    "品名",
+    "商品代码",
+    "_",
+    "市场价",
+    "含税集采价",
+    "含税代发价",
+    "平台价",
+    "最终利润比",
+    "标准利润率",
+    "利润完成比",
+    "v1利润线",
+    "v1满足价格",
+    "v1等级满足比",
+    "v1最终价格",
+    "v2利润线",
+    "v2满足价格",
+    "v2等级满足比",
+    "v2最终价格",
+    "v3利润线",
+    "v3满足价格",
+    "v3等级满足比",
+    "v3最终价格",
+    "v4利润线",
+    "v4满足价格",
+    "v4等级满足比",
+    "v4最终价格",
+]
+valid_headers = [
+    "序号",
+    "品牌",
+    "品名",
+    "商品代码",
+    "市场价",
+    "含税代发价",
+    "平台价",
+    "v1最终价格",
+    "v2最终价格",
+    "v3最终价格",
+    "v4最终价格",
+]
+
 if __name__ == "__main__":
+    from qasync import QEventLoop
+
     app = QApplication(sys.argv)
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)

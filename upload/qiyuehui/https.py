@@ -4,18 +4,17 @@ from json import JSONDecodeError
 import httpx
 import loguru
 
+from files import managed_exists, managed_open
 from https import get as base_get
 from https import post as base_post
 
 
 def update_token() -> str:
-    import os
-
-    if not os.path.exists('x-token.token'):
+    if not managed_exists('x-token.token'):
         return ''
 
     global base_headers
-    with open('x-token.token', 'r') as f:
+    with managed_open('x-token.token', 'r') as f:
         token = f.read().strip()
     base_headers.update({'X-Token': token})
     return token
@@ -32,32 +31,36 @@ base_headers = {
     'Sec-Fetch-Dest': 'empty',
     'Sec-Fetch-Mode': 'cors',
     'Sec-Fetch-Site': 'same-site',
-    'X-Token': '',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     'sec-ch-ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-platform': '"Windows"',
+    'X-Token': ''
 }
 update_token()
 
 
-async def post(url, data, headers: dict = None, *args, **kwargs) -> httpx.Response:
-    new_header = headers
+async def post(url, headers: dict = None, *args, **kwargs) -> httpx.Response:
+    new_headers = base_headers
     if headers is not None:
-        new_header.update(headers)
-        try:
-            response = await base_post(url, data, headers, *args, **kwargs)
+        new_headers.update(headers)
 
-            json = response.json()
+    try:
+        response = await base_post(url, headers=new_headers, *args, **kwargs)
 
-            assert json.get('errno') == 0, json.get('errmsg')
-            return response
-        except JSONDecodeError as e:
-            raise Exception(f'JSONDecodeError: {e} {response.text}')
-        except Exception as e:
-            loguru.logger.error(str(type(e)), e)
-            time.sleep(1)
-            return await base_post(url, data, headers, *args, **kwargs)
+        json = response.json()
+
+        assert json.get('errno') == 0, json.get('errmsg')
+        return response
+    except JSONDecodeError as e:
+        raise Exception(f'JSONDecodeError: {e} {response.text}')
+    except AssertionError as e:
+        loguru.logger.error(e)
+        raise Exception(e)
+    except Exception as e:
+        loguru.logger.error(e)
+        time.sleep(1)
+        return await base_post(url, headers=new_headers, *args, **kwargs)
 
 
 async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -> httpx.Response:

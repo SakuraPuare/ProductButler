@@ -4,56 +4,54 @@ import json
 import pathlib
 import time
 
+import loguru
+
+from files import managed_exists, managed_open
+
 from .https import get, post, update_token
+from .utils import fmt_desc
 
 token_path = pathlib.Path('x-token.token')
-
-default_data = {
-    'goods': {
-        'clearCustom': None,
-        # 'gallery': [
-        #     'https://cdn.zlqiyuehui.com/20004/gallery/1732278082313.jpg',
-        #     'https://cdn.zlqiyuehui.com/20004/gallery/1732278082314.jpg',
-        #     'https://cdn.zlqiyuehui.com/20004/gallery/1732278082314.jpg',
-        #     'https://cdn.zlqiyuehui.com/20004/gallery/1732278082313.jpg',
-        #     'https://cdn.zlqiyuehui.com/20004/gallery/1732278082316.jpg',
-        #     'https://cdn.zlqiyuehui.com/20004/gallery/1732278082317.jpg',
-        #     'https://cdn.zlqiyuehui.com/20004/gallery/1732278082317.jpg',
-        #     'https://cdn.zlqiyuehui.com/20004/gallery/1732278082316.jpg',
-        #     'https://cdn.zlqiyuehui.com/20004/gallery/1732278082318.jpg',
-        #     'https://cdn.zlqiyuehui.com/20004/gallery/1732278082318.jpg',
-        # ],
-        # 'categoryId': '8b43d1d5-8f47-11ee-b3e4-525400154120',
-        # 'retailPrice': '198.20',
-        'counterPrice': 0,
-        # 'costPrice': '109.00',
-        # 'desc': '<p><img src="https://cdn.zlqiyuehui.com/20004/1732278363367842.jpg" style=""/></p><p><img src="https://cdn.zlqiyuehui.com/20004/1732278363354801.jpg" style=""/></p><p><img src="https://cdn.zlqiyuehui.com/20004/1732278363367242.jpg" style=""/></p><p><img src="https://cdn.zlqiyuehui.com/20004/1732278363796926.jpg" style=""/></p><p><img src="https://cdn.zlqiyuehui.com/20004/1732278363829385.jpg" style=""/></p><p><img src="https://cdn.zlqiyuehui.com/20004/1732278364234582.jpg" style=""/></p><p><img src="https://cdn.zlqiyuehui.com/20004/1732278364469276.jpg" style=""/></p><p><img src="https://cdn.zlqiyuehui.com/20004/1732278364528023.jpg" style=""/></p><p><img src="https://cdn.zlqiyuehui.com/20004/1732278364564681.jpg" style=""/></p><p><img src="https://cdn.zlqiyuehui.com/20004/1732278364756285.jpg" style=""/></p><p><br/></p>',
-        'goodsNum': 10000,
-        'speciType': True,
-        'unit': '件',
-        'wlTemplateId': '7a10debc-b76e-11ee-b3e4-525400154120',
-        'wlTemplateType': 1,
-        # 'name': '法国啄木鸟 自由棉涤磨毛四件套-莱尔',
-        # 'goodsSn': '6972830135419',
-        'weight': '1.00',
-        'isOnSale': True,
-    },
-    'products': [],
-    'specifications': [],
-    'attributes': [],
-}
 
 
 async def create(
         gallery: list[str],
-        categoryId: str,
+        category_list: list[str],
         retailPrice: str,
+        counterPrice: str,
         costPrice: str,
-        desc: str,
+        desc: list[str],
         name: str,
         goodsSn: str,
+        weight: str
 ):
-    pass
+    data = {
+        'goods': {
+            'clearCustom': None,
+            'gallery': gallery[:10],
+            'categoryId': ','.join([i.get('level') for i in category_list]),
+            'retailPrice': "%.2f" % float(retailPrice),
+            'counterPrice': "%.2f" % float(counterPrice),
+            'costPrice': "%.2f" % float(costPrice),
+            'desc': fmt_desc(desc),
+            'goodsNum': 10000,
+            'speciType': True,
+            'unit': '件',
+            'wlTemplateId': '7a10debc-b76e-11ee-b3e4-525400154120',
+            'wlTemplateType': 1,
+            'name': name.strip(),
+            'goodsSn': goodsSn.replace(' ', ''),
+            'weight': "%.2f" % float(weight),
+            'isOnSale': True,
+        },
+        'products': [],
+        'specifications': [],
+        'attributes': [],
+    }
+
+    resp = await post('https://api.zlqiyuehui.com/vender/goods/create', json=data)
+
+    return resp
 
 
 async def add_vip_goods(goods_id: str):
@@ -64,11 +62,11 @@ async def add_vip_goods(goods_id: str):
     await post('https://api.zlqiyuehui.com/vender/goods/addVipGood', params=params)
 
 
-async def get_vip_goods(page: int = 1, size: int = 10):
+async def get_goods_list(page: int = 1, size: int = 10, status: bool = False):
     params = {
         'page': page,
         'size': size,
-        'status': 'false',
+        'status': status,
         'name': '',
         'goodsId': '',
     }
@@ -86,7 +84,9 @@ async def get_goods_detail(product_id: str):
         'type': '1',
     }
 
-    return await get('https://api.zlqiyuehui.com/vender/goods/detail', params=params)
+    resp = await get('https://api.zlqiyuehui.com/vender/goods/detail', params=params)
+
+    return resp.json().get('data', {})
 
 
 async def set_vip_price(
@@ -113,22 +113,48 @@ async def set_vip_price(
                 'specifications': [
                     '标准',
                 ],
-                'price': price,
+                'price': "%.2f" % float(price),
                 'number': number,
                 'addTime': add_time,
                 'deleted': deleted,
                 'specificationCode': specification_code,
-                'costPrice': cost_price,
-                'vip1Price': vip1_price,
-                'vip2Price': vip2_price,
-                'vip3Price': vip3_price,
-                'vip4Price': vip4_price,
+                'costPrice': "%.2f" % float(cost_price),
+                'vip1Price': "%.2f" % float(vip1_price),
+                'vip2Price': "%.2f" % float(vip2_price),
+                'vip3Price': "%.2f" % float(vip3_price),
+                'vip4Price': "%.2f" % float(vip4_price),
             },
         ],
     }
 
     await post(
         'https://api.zlqiyuehui.com/vender/goods/saveVipPrice', json=json_data)
+
+
+async def get_category():
+    response = await get('https://api.zlqiyuehui.com/vender/goods/catAndBrand')
+
+    category_list = response.json().get('data', {}).get(
+        'categoryList', [])
+
+    category = {}
+
+    for i in category_list:
+        category[i['label']] = {
+            'level': i['id'],
+            'children': {},
+            'name': i['label'],
+        }
+        for j in i['children']:
+            category[i['label']]['children'][j['label']] = {
+                'level': j['id'],
+                'children': {},
+                'name': j['label'],
+            }
+
+    with managed_open('category.json', 'w', encoding='u8') as f:
+        f.write(json.dumps(category, indent=4, ensure_ascii=False))
+    return category
 
 
 coscredential_url_as_base64 = "aHR0cHM6Ly9hcGkuemxxaXl1ZWh1aS5jb20vdmVuZGVyL3VwbG9hZC9DT1NDcmVkZW50aWFs"
@@ -148,16 +174,16 @@ async def get_cors_credentials() -> dict:
 
 async def check_login():
     try:
-        resp = get('https://api.zlqiyuehui.com/vender/dashboard')
+        resp = await get('https://api.zlqiyuehui.com/vender/order/getRefundNum')
     except Exception as e:
         return False
     return True
 
 
 def login():
-    if token_path.exists():
+    # if token_path.exists():
+    if managed_exists('x-token.token'):
         update_token()
-        return
 
     if asyncio.run(check_login()):
         return
@@ -178,16 +204,21 @@ def login():
         time.sleep(1)
 
     token = set()
-    for request in driver.requests:
-        if request.response:
-            if 'x-token' in request.headers:
-                token.add(request.headers['x-token'])
+    while True:
+        for request in driver.requests:
+            if request.response:
+                if 'x-token' in request.headers:
+                    token.add(request.headers['x-token'])
 
-    if not token:
-        return
+        if not token:
+            loguru.logger.error('Waiting for token...')
+            time.sleep(1)
+        else:
+            break
+
     token = token.pop()
 
-    with open(token_path, 'w') as f:
+    with managed_open(token_path, 'w') as f:
         f.write(token)
 
     update_token()

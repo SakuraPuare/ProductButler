@@ -4,9 +4,12 @@ aiofiles
 imagehash
 pillow
 beautifulsoup4
+
 pandas
 openpyxl
 lxml
+xlrd
+
 qasync
 
 pyside6

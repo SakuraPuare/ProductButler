@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from files import managed_open
 from typehints import Category
 from utils import load_cookies, save_cookies
+
 from .https import get, post, reload_cookies
 
 default_data = {
@@ -91,7 +92,6 @@ async def upload_file(types: str, path: pathlib.Path) -> str:
 
     response = await post(
         "http://hlt-admin.honglitong.cn/util/open/layui/UploadImg",
-        data={},
         headers={
             "Content-Type": "multipart/form-data; boundary=----WebKitFormBoundary"
         },
@@ -177,12 +177,14 @@ async def get_category() -> Category:
 
             child[option_l2.text.strip()] = {
                 'level': value_l2,
-                'children': {}
+                'children': {},
+                'name': option_l2.text.strip(),
             }
 
         category_list[option_1.text.strip()] = {
             'level': value_l1,
-            'children': child
+            'children': child,
+            'name': option_1.text.strip(),
         }
 
     with managed_open("category.json", "w", encoding='u8') as f:
