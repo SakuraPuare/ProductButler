@@ -43,12 +43,12 @@ def launch_browser():
             "selenium.webdriver.chrome.options.Options",
             "webdriver_manager.chrome.ChromeDriverManager"),
         "firefox": (
-            "selenium.webdriver.firefox.service.Service", 
+            "selenium.webdriver.firefox.service.Service",
             "selenium.webdriver.firefox.options.Options",
             "webdriver_manager.firefox.GeckoDriverManager"),
         "edge": (
             "selenium.webdriver.edge.service.Service",
-            "selenium.webdriver.edge.options.Options", 
+            "selenium.webdriver.edge.options.Options",
             "webdriver_manager.microsoft.EdgeChromiumDriverManager"),
     }
 
@@ -58,14 +58,14 @@ def launch_browser():
             loguru.logger.info(f"{browser_name.capitalize()} 浏览器已安装，正在启动...")
 
             start_time = time.time()
-            
+
             # 获取服务和选项类
             module_path, class_name = service_class_path.rsplit('.', 1)
             service_class = getattr(importlib.import_module(module_path), class_name)
-            
+
             module_path, class_name = options_class_path.rsplit('.', 1)
             options_class = getattr(importlib.import_module(module_path), class_name)
-            
+
             module_path, class_name = manager_class_path.rsplit('.', 1)
             driver_manager = getattr(importlib.import_module(module_path), class_name)
 
