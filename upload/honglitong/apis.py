@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 from files import managed_open
 from typehints import Category
 from utils import load_cookies, save_cookies
-
 from .https import get, post, reload_cookies
 
 default_data = {

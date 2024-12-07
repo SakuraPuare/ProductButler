@@ -1,20 +1,21 @@
 import asyncio
-import itertools
 import pathlib
 import sys
 import time
 
 import loguru
 import pandas as pd
-from pandas import DataFrame
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QHBoxLayout,
+    QVBoxLayout,
     QTableWidgetItem,
     QWidget,
+    QDialog,
 )
+from pandas import DataFrame
 from qfluentwidgets import (
     BodyLabel,
     ComboBox,
@@ -24,14 +25,17 @@ from qfluentwidgets import (
     PushButton,
     TableWidget,
     VBoxLayout,
+    ScrollArea,
+    CheckBox,
+    SubtitleLabel,
+    HorizontalSeparator,
+    FlowLayout
 )
 
 from files import managed_exists, managed_open
-from utils import glob_file_in_folder
-
+from utils import find_closest_string, glob_file_in_folder
 from .apis import (
     add_vip_goods,
-    check_login,
     create,
     get_category,
     get_goods_detail,
@@ -103,8 +107,8 @@ class Main(QWidget):
             InfoBar.error(title="Error", content="请选择图片文件夹", parent=self)
             return
 
-        if not await check_login():
-            login()
+        await login()
+
         self.data_form = DataForm((self.file_name, self.image_path))
         self.close()
         self.data_form.show()
@@ -191,15 +195,16 @@ class DataForm(QWidget):
 
         data = [self.table_widget.item(0, i).text()
                 for i in range(self.table_widget.columnCount())]
-
-        ids, brand, goods_name, bar_code, market_price, cost_price, counter_price, v1_price, v2_price, v3_price, v4_price = data
+        # 含税代发价	市场价	职友团平台价	普通会员价格	高级会员价	VIP会员价	至尊VIP会员价
+        # 26.50 	39.8 	39.8	35.8 	32.5 	29.8 	28.6
+        ids, category_1, category_2, brand, goods_name, bar_code, cost_price, market_price, counter_price, _, _, _, _ = data
 
         weight = self.weight_edit.text()
 
         InfoBar.info(title="上传中", content="请稍等", parent=self)
 
         try:
-        # if True:
+            # if True:
             posts_url = await asyncio.gather(
                 *[upload_file(i) for i in list(self.posts)[:10]]
             )
@@ -209,7 +214,7 @@ class DataForm(QWidget):
             # "市场价","含税代发价","平台价"
             create_response = await create(
                 posts_url,
-                self.category_list,
+                self.selected_category,
                 counter_price,
                 market_price,
                 cost_price,
@@ -253,9 +258,9 @@ class DataForm(QWidget):
             index_of_goods_detail = []
             for i in goods_details:
                 name = i.get('goods', {}).get('name', '')
-                if not self.table_data[self.table_data["品名"].str.contains(name)].empty:
+                if not self.table_data[self.table_data["商品名称"].str.contains(name)].empty:
                     index_of_goods_detail.append(
-                        self.table_data[self.table_data["品名"].str.contains(
+                        self.table_data[self.table_data["商品名称"].str.contains(
                             name)].index[0]
                     )
 
@@ -274,10 +279,10 @@ class DataForm(QWidget):
                             product.get('specificationCode'),
                             product.get('costPrice'),
                             *list(self.table_data.loc[index][[
-                                "v1最终价格",
-                                "v2最终价格",
-                                "v3最终价格",
-                                "v4最终价格",
+                                "普通会员价格",
+                                "高级会员价",
+                                "VIP会员价",
+                                "至尊VIP会员价",
                             ]])
                         )
                     )
@@ -328,7 +333,12 @@ class DataForm(QWidget):
         self.jmp(self.start)
 
     def show_category(self):
-        pass
+        # Create and show the category selection dialog
+        self.category_dialog = CategoryDialog(self.category, self.selected_category)
+        if self.category_dialog.exec():
+            # Update selected categories when dialog is accepted
+            self.selected_category = self.category_dialog.get_selected_categories()
+            self.update_category()
 
     def update_ui(self):
         self.detail_label.setText(f"详细信息: 已载入{len(self.table_data)}条数据")
@@ -336,17 +346,19 @@ class DataForm(QWidget):
         # get the line
         row = self.table_data.loc[self.loc]
 
-        self.category_list = get_price_category(
-            self.category, float(row["平台价"]))
-        self.category_list = get_price_category(
-            self.category, float(row["市场价"]))
-        self.category_list.extend(
+        temp_cat = get_price_category(
+            self.category, float(row["职友团平台价"]))
+        temp_cat.extend(get_price_category(
+            self.category, float(row["市场价"])))
+        temp_cat.extend(
             get_keyword_category(self.category, row["品牌"]))
-        self.category_list.extend(
-            get_keyword_category(self.category, row["品名"]))
+        temp_cat.extend(
+            get_keyword_category(self.category, row["商品名称"]))
+        temp_cat.extend(
+            get_keyword_category(self.category, row["二级分类"]))
 
-        self.category_list = [
-            i for i in self.category_list if i not in self.black_list]
+        # 去重，使用字典的level字段作为唯一标识
+        self.selected_category = list({cat['level']: cat for cat in temp_cat}.values())
 
         self.update_category()
 
@@ -363,13 +375,14 @@ class DataForm(QWidget):
     def update_category(self):
         # update category
         self.category_label.setText(
-            ', '.join([i['name'] for i in self.category_list]))
+            ', '.join([i['name'] for i in self.selected_category]))
 
     def update_image_path_list(self):
         self.poster_url_list.clear()
         self.detail_url_list.clear()
 
         idx = self.table_data.loc[self.loc]["序号"]
+        goods_name = self.table_data.loc[self.loc]["商品名称"]
         self.image_folder = [
             i for i in self.image_folder_list if i.name.startswith(str(idx))
         ]
@@ -378,12 +391,16 @@ class DataForm(QWidget):
             InfoBar.error(title="Error", content="未找到图片文件夹", parent=self)
             return
 
-        self.image_folder = self.image_folder[-1]
+        # self.image_folder = self.image_folder[-1]
+        # find the closest folder
+        self.image_folder = self.image_folder[
+            find_closest_string(goods_name, [i.name for i in self.image_folder])
+        ]
 
         start_time = time.time()
         self.posts, self.details = glob_file_in_folder(self.image_folder)
         loguru.logger.info(f"glob_file_in_folder cost {
-            time.time() - start_time:.2f}s")
+        time.time() - start_time:.2f}s")
 
         for i in self.posts:
             i = str(i)
@@ -411,13 +428,13 @@ class DataForm(QWidget):
 
     def get_price_by_goods_name(self, goods_name):
         # find 品名 contains goods_name
-        row = self.table_data[self.table_data["品名"].str.contains(goods_name)]
+        row = self.table_data[self.table_data["商品名称"].str.contains(goods_name)]
         data = (self.table_data.loc[row.index[0]][[
-                "v1最终价格",
-                "v2最终价格",
-                "v3最终价格",
-                "v4最终价格",
-                ]])
+            "普通会员价格",
+            "高级会员价",
+            "VIP会员价",
+            "至尊VIP会员价",
+        ]])
         return list(data)
 
     async def init_data(self):
@@ -597,48 +614,133 @@ class DataForm(QWidget):
         InfoBar.info(title="Success", content="已经切换到指定数据", parent=self)
 
 
+class CategoryDialog(QDialog):
+    def __init__(self, categories, selected_categories):
+        super().__init__()
+        self.categories = categories
+        self.selected_categories = selected_categories
+        self.checkboxes = []  # 存储所有的复选框
+        self.checkbox_data = {}  # 存储复选框与数据的映射关系
+        self.init_ui()
+
+    def init_ui(self):
+        layout = VBoxLayout(self)
+
+        # 创建滚动区域
+        scroll_widget = QWidget()
+        scroll_layout = VBoxLayout(scroll_widget)
+        scroll_area = ScrollArea()
+        scroll_area.setWidget(scroll_widget)
+        scroll_area.setWidgetResizable(True)
+
+        # 按一级分类组织二级分类
+        for category_name, category_data in self.categories.items():
+            if category_name != "价格区间":  # 跳过价格区间
+                # 创建分类组标题
+                group_layout = QVBoxLayout()
+                title = SubtitleLabel(category_name)
+                group_layout.addWidget(title)
+
+                # 创建复选框网格布局
+                checkbox_layout = FlowLayout()
+
+                # 添加该分类下的所有二级分类
+                for child_name, child_data in category_data.get("children", {}).items():
+                    checkbox = CheckBox(child_name)
+
+                    # 存储复选框与数据的关系
+                    self.checkbox_data[checkbox] = child_data
+
+                    # 检查是否在已选择列表中
+                    if any(cat["level"] == child_data["level"] for cat in self.selected_categories):
+                        checkbox.setChecked(True)
+
+                    self.checkboxes.append(checkbox)
+                    checkbox_layout.addWidget(checkbox)
+
+                group_layout.addLayout(checkbox_layout)
+                scroll_layout.addLayout(group_layout)
+
+                # 添加分隔线
+                scroll_layout.addWidget(HorizontalSeparator())
+
+        # 添加按钮
+        button_layout = QHBoxLayout()
+        ok_button = PushButton("确定")
+        cancel_button = PushButton("取消")
+
+        ok_button.clicked.connect(self.accept)
+        cancel_button.clicked.connect(self.reject)
+
+        button_layout.addStretch()
+        button_layout.addWidget(cancel_button)
+        button_layout.addWidget(ok_button)
+
+        # 设置布局
+        layout.addWidget(scroll_area)
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
+        self.resize(800, 600)
+        self.setWindowTitle("选择类别")
+
+    def get_selected_categories(self):
+        selected = []
+        for checkbox in self.checkboxes:
+            if checkbox.isChecked():
+                category_data = self.checkbox_data[checkbox]
+                selected.append({
+                    "level": category_data["level"],
+                    "name": category_data["name"]
+                })
+        return selected
+
+
 table_headers = [
     "序号",
+    "一级分类",
+    "二级分类",
     "品牌",
-    "品名",
+    "商品名称",
     "商品代码",
-    "_",
-    "市场价",
     "含税集采价",
     "含税代发价",
-    "平台价",
-    "最终利润比",
+    "市场价",
+    "职友团平台价",
+    "最终利润率",
     "标准利润率",
     "利润完成比",
-    "v1利润线",
-    "v1满足价格",
-    "v1等级满足比",
-    "v1最终价格",
-    "v2利润线",
-    "v2满足价格",
-    "v2等级满足比",
-    "v2最终价格",
-    "v3利润线",
-    "v3满足价格",
-    "v3等级满足比",
-    "v3最终价格",
-    "v4利润线",
-    "v4满足价格",
-    "v4等级满足比",
-    "v4最终价格",
+    "利润线",
+    "满足价格",
+    "等级满足比",
+    "普通会员价格",
+    "利润线",
+    "满足价格",
+    "等级满足比",
+    "高级会员价",
+    "利润线",
+    "满足价格",
+    "等级满足比",
+    "VIP会员价",
+    "利润线",
+    "满足价格",
+    "等级满足比",
+    "至尊VIP会员价",
 ]
 valid_headers = [
     "序号",
+    "一级分类",
+    "二级分类",
     "品牌",
-    "品名",
+    "商品名称",
     "商品代码",
-    "市场价",
     "含税代发价",
-    "平台价",
-    "v1最终价格",
-    "v2最终价格",
-    "v3最终价格",
-    "v4最终价格",
+    "市场价",
+    "职友团平台价",
+    "普通会员价格",
+    "高级会员价",
+    "VIP会员价",
+    "至尊VIP会员价",
 ]
 
 if __name__ == "__main__":

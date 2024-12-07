@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import json
 import pathlib
@@ -7,7 +6,6 @@ import time
 import loguru
 
 from files import managed_exists, managed_open
-
 from .https import get, post, update_token
 from .utils import fmt_desc
 
@@ -180,12 +178,12 @@ async def check_login():
     return True
 
 
-def login():
+async def login():
     # if token_path.exists():
     if managed_exists('x-token.token'):
         update_token()
 
-    if asyncio.run(check_login()):
+    if await check_login():
         return
 
     from browser import launch_browser

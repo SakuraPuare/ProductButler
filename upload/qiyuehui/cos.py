@@ -31,7 +31,7 @@ async def upload_file(filename: pathlib.Path) -> str:
         client = CosS3Client(config)
 
     url_name = str(int(time.time() * 1000)) + filename.suffix
-    
+
     response = client.upload_file(
         Bucket=bucket,
         LocalFilePath=filename.absolute(),

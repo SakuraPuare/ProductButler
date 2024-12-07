@@ -39,5 +39,12 @@ def get_keyword_category(category: 'Category', keyword: str) -> list[dict]:
         for k, v in children.items():
             if k in keyword:
                 ret.append(v)
-
     return ret
+
+
+def get_category(category: 'Category', category_name: str) -> dict:
+    secondary = [
+        category[key] for key in category.keys()
+        if category_name in key
+    ]
+    return secondary[find_closest_string(category_name, secondary)]

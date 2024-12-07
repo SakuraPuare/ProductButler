@@ -43,20 +43,29 @@ class StartWindow(QWidget):
         self.setLayout(layout)
 
     def start_upload(self):
-        selected_platform = self.platform_combo.currentText()
-        if selected_platform:
-            platform_info = PLATFORMS.get(selected_platform)
-            if platform_info:
-                # importlib
-                module = importlib.import_module(platform_info + '.gui')
+        # Prevent duplicate clicks by disabling the button
+        if not self.start_button.isEnabled():
+            return
+        self.start_button.setEnabled(False)
 
-                self.close()
-                self.new_window = module.Main()
-                self.new_window.show()
+        try:
+            selected_platform = self.platform_combo.currentText()
+            if selected_platform:
+                platform_info = PLATFORMS.get(selected_platform)
+                if platform_info:
+                    # importlib
+                    module = importlib.import_module(platform_info + '.gui')
+
+                    self.close()
+                    self.new_window = module.Main()
+                    self.new_window.show()
+                else:
+                    InfoBar.warning(self, "警告", "该平台未定义!")
             else:
-                InfoBar.warning(self, "警告", "该平台未定义!")
-        else:
-            InfoBar.warning(self, "警告", "请先选择一个平台!")
+                InfoBar.warning(self, "警告", "请先选择一个平台!")
+        finally:
+            # Re-enable the button after execution
+            self.start_button.setEnabled(True)
 
 
 if __name__ == "__main__":

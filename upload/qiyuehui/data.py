@@ -17,7 +17,6 @@ headers = {
     'sec-ch-ua-platform': '"Windows"',
 }
 
-
 base_headers = {
     'Accept': 'application/json, text/plain, */*',
     'Accept-Language': 'zh-CN,zh;q=0.9',
@@ -39,17 +38,17 @@ json_data = {
     'goods': {
         'clearCustom': None,
         'gallery': [
-            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611855035.jpg', 
-'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854780.png', 
-'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854565.jpg', 
-'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611853500.jpg', 
-'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854249.jpg', 
-'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856843.jpg', 
-'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856039.jpg', 
-'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856352.jpg', 
-'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856585.jpg', 
-'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611855841.jpg'
-],
+            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611855035.jpg',
+            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854780.png',
+            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854565.jpg',
+            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611853500.jpg',
+            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854249.jpg',
+            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856843.jpg',
+            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856039.jpg',
+            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856352.jpg',
+            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856585.jpg',
+            'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611855841.jpg'
+        ],
         'categoryId': '8bee89d1-927f-11ee-b3e4-525400154120',
         'retailPrice': '234.50',
         'counterPrice': '478.00',
@@ -72,4 +71,13 @@ json_data = {
 
 response = requests.post('https://api.zlqiyuehui.com/vender/goods/create', headers=headers, json=json_data)
 
-['https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611855035.jpg', 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854780.png', 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854565.jpg', 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611853500.jpg', 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854249.jpg', 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856843.jpg', 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856039.jpg', 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856352.jpg', 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856585.jpg', 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611855841.jpg']
+['https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611855035.jpg',
+ 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854780.png',
+ 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854565.jpg',
+ 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611853500.jpg',
+ 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611854249.jpg',
+ 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856843.jpg',
+ 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856039.jpg',
+ 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856352.jpg',
+ 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611856585.jpg',
+ 'https://qiyuehui-1300221291.cos.ap-guangzhou.myqcloud.com/20004/gallery/1732611855841.jpg']
