@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import sys
+import os
 
 from PySide6.QtWidgets import QApplication, QWidget
 from qasync import QEventLoop
@@ -69,6 +70,10 @@ class StartWindow(QWidget):
 
 
 if __name__ == "__main__":
+
+    # 添加 webdriver_manager 到 import path
+    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'webdriver_manager'))
+
     try:
         app = QApplication(sys.argv)
         loop = QEventLoop(app)

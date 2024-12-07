@@ -4,6 +4,7 @@ import platform
 import time
 
 import loguru
+from webdriver_manager.core.logger import set_logger
 
 
 def get_browser_path(browser_name):
@@ -30,29 +31,43 @@ def is_browser_installed(browser_name):
 
 
 def launch_browser():
+    # Hook webdriver_manager's logger to loguru
+    set_logger(loguru.logger)
+
+    # set level debug
+    loguru.logger.level("DEBUG")
+
     browsers = {
         "chrome": (
-            "selenium.webdriver.chrome.service", "selenium.webdriver.chrome.options", "webdriver_manager.chrome"),
+            "selenium.webdriver.chrome.service.Service",
+            "selenium.webdriver.chrome.options.Options",
+            "webdriver_manager.chrome.ChromeDriverManager"),
         "firefox": (
-            "selenium.webdriver.firefox.service", "selenium.webdriver.firefox.options", "webdriver_manager.firefox"),
-        "edge": ("selenium.webdriver.edge.service", "selenium.webdriver.edge.options", "webdriver_manager.microsoft"),
+            "selenium.webdriver.firefox.service.Service", 
+            "selenium.webdriver.firefox.options.Options",
+            "webdriver_manager.firefox.GeckoDriverManager"),
+        "edge": (
+            "selenium.webdriver.edge.service.Service",
+            "selenium.webdriver.edge.options.Options", 
+            "webdriver_manager.microsoft.EdgeChromiumDriverManager"),
     }
 
-    for browser_name, (service_module, options_module, manager_module) in browsers.items():
+    for browser_name, (service_class_path, options_class_path, manager_class_path) in browsers.items():
         if is_browser_installed(browser_name):
             # print(f"{browser_name.capitalize()} 浏览器已安装，正在启动...")
             loguru.logger.info(f"{browser_name.capitalize()} 浏览器已安装，正在启动...")
 
             start_time = time.time()
-            # 动态加载模块
-            service = importlib.import_module(service_module)
-            options = importlib.import_module(options_module)
-            manager = importlib.import_module(manager_module)
-
+            
             # 获取服务和选项类
-            service_class = getattr(service, f'Service')
-            options_class = getattr(options, f'Options')
-            driver_manager = getattr(manager, f'{browser_name.capitalize()}DriverManager')
+            module_path, class_name = service_class_path.rsplit('.', 1)
+            service_class = getattr(importlib.import_module(module_path), class_name)
+            
+            module_path, class_name = options_class_path.rsplit('.', 1)
+            options_class = getattr(importlib.import_module(module_path), class_name)
+            
+            module_path, class_name = manager_class_path.rsplit('.', 1)
+            driver_manager = getattr(importlib.import_module(module_path), class_name)
 
             # 创建选项和服务实例
             options_instance = options_class()
