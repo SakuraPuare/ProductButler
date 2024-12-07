@@ -18,7 +18,7 @@ PySide6-Fluent-Widgets[full]
 selenium
 selenium-wire
 blinker==1.7.0
-webdriver-manager
+# webdriver-manager
 
 cos-python-sdk-v5
 
