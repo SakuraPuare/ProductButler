@@ -22,8 +22,6 @@ def is_image(byte: bytes) -> bool:
         Image.open(io.BytesIO(byte))
         return True
     except Exception as e:
-        import loguru
-        loguru.logger.error(e)
         return False
 
 
