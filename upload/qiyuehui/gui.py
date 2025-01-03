@@ -39,7 +39,7 @@ from .apis import (
     create,
     get_category,
     get_goods_detail,
-    get_goods_list,
+    get_vip_goods_list,
     login,
     set_vip_price,
 )
@@ -228,7 +228,7 @@ class DataForm(QWidget):
             page = 1
             size = 10
             while True:
-                none_vip_goods_list.extend(await get_goods_list(page=page, size=size))
+                none_vip_goods_list.extend(await get_vip_goods_list(page=page, size=size))
                 if len(none_vip_goods_list) % size != 0 or not none_vip_goods_list:
                     break
                 page += 1
@@ -241,9 +241,9 @@ class DataForm(QWidget):
 
             flag = True
             page = 1
-            size = 10
+            size = 100
             while flag:
-                vip_goods_list = await get_goods_list(page=page, size=size, status=True)
+                vip_goods_list = await get_vip_goods_list(page=page, size=size, status=True)
                 for i in vip_goods_list:
                     detail = await get_goods_detail(i.get('Id'))
                     price = [detail.get('products', [])[0].get(
@@ -258,10 +258,10 @@ class DataForm(QWidget):
             index_of_goods_detail = []
             for i in goods_details:
                 name = i.get('goods', {}).get('name', '')
-                if not self.table_data[self.table_data["商品名称"].str.contains(name)].empty:
+                if not self.table_data[self.table_data["商品名称"].str.contains(name, regex=False)].empty:
                     index_of_goods_detail.append(
                         self.table_data[self.table_data["商品名称"].str.contains(
-                            name)].index[0]
+                            name, regex=False)].index[0]
                     )
 
             tasks = []
@@ -270,14 +270,6 @@ class DataForm(QWidget):
                     tasks.append(
                         set_vip_price(
                             product.get('id'),
-                            product.get('vendorId'),
-                            product.get('goodsId'),
-                            product.get('price'),
-                            product.get('number'),
-                            product.get('addTime'),
-                            product.get('deleted'),
-                            product.get('specificationCode'),
-                            product.get('costPrice'),
                             *list(self.table_data.loc[index][[
                                 "普通会员价格",
                                 "高级会员价",
@@ -428,7 +420,7 @@ class DataForm(QWidget):
 
     def get_price_by_goods_name(self, goods_name):
         # find 品名 contains goods_name
-        row = self.table_data[self.table_data["商品名称"].str.contains(goods_name)]
+        row = self.table_data[self.table_data["商品名称"].str.contains(goods_name, regex=False)]
         data = (self.table_data.loc[row.index[0]][[
             "普通会员价格",
             "高级会员价",

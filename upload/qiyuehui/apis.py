@@ -60,7 +60,7 @@ async def add_vip_goods(goods_id: str):
     await post('https://api.zlqiyuehui.com/vender/goods/addVipGood', params=params)
 
 
-async def get_goods_list(page: int = 1, size: int = 10, status: bool = False):
+async def get_vip_goods_list(page: int = 1, size: int = 10, status: bool = False):
     params = {
         'page': page,
         'size': size,
@@ -75,6 +75,19 @@ async def get_goods_list(page: int = 1, size: int = 10, status: bool = False):
     data = response.json()
     return data.get('data', {}).get('goods', [])
 
+async def get_goods_list(page: int = 1, limit: int = 10):
+    params = {
+        'page': page,
+        'limit': limit,
+        'isOnSale': True,
+        'goodsNum': '',
+        'isVague': 0
+    }
+
+    response = await get('https://api.zlqiyuehui.com/vender/goods/list', params=params)
+    
+    data = response.json()
+    return data.get('data', {}).get('items', [])
 
 async def get_goods_detail(product_id: str):
     params = {
@@ -86,17 +99,15 @@ async def get_goods_detail(product_id: str):
 
     return resp.json().get('data', {})
 
+async def delete_goods(goods_id: str):
+    json_data = {
+        'id': goods_id,
+    }
+
+    await post('https://api.zlqiyuehui.com/vender/goods/delete', json=json_data)
 
 async def set_vip_price(
         product_id: str,
-        vendor_id: int,
-        goods_id: str,
-        price: float,
-        number: int,
-        add_time: str,
-        deleted: bool,
-        specification_code: str,
-        cost_price: float,
         vip1_price: float,
         vip2_price: float,
         vip3_price: float,
@@ -106,17 +117,6 @@ async def set_vip_price(
         'products': [
             {
                 'id': product_id,
-                'venderId': vendor_id,
-                'goodsId': goods_id,
-                'specifications': [
-                    '标准',
-                ],
-                'price': "%.2f" % float(price),
-                'number': number,
-                'addTime': add_time,
-                'deleted': deleted,
-                'specificationCode': specification_code,
-                'costPrice': "%.2f" % float(cost_price),
                 'vip1Price': "%.2f" % float(vip1_price),
                 'vip2Price': "%.2f" % float(vip2_price),
                 'vip3Price': "%.2f" % float(vip3_price),
