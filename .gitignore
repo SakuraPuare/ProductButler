@@ -175,3 +175,7 @@ verify.jpg
 
 cookies.json
 *.token
+
+*.xls
+*.xlsx
+*.csv
