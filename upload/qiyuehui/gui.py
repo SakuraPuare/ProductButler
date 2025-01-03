@@ -39,8 +39,10 @@ from .apis import (
     create,
     get_category,
     get_goods_detail,
+    get_goods_list,
     get_vip_goods_list,
     login,
+    search_goods,
     set_vip_price,
 )
 from .cos import upload_file
@@ -167,13 +169,23 @@ class DataForm(QWidget):
 
         self.image_folder_list = list(pathlib.Path(self.image_path).iterdir())
 
-        asyncio.ensure_future(self.initialize())
-
         self.loc = -1
+
+        asyncio.ensure_future(self.initialize())
 
     async def initialize(self):
         await self.init_data()
         self.init_ui()
+
+        # get the first goods, try to recover the last upload
+        goods_list = await get_goods_list(page=1, limit=1)
+        good = goods_list[0]
+        name = good.get('name', '')
+        bar_code = good.get('goodsSn', '')
+
+        loc = self.get_loc_by_goods_detail(name, bar_code)
+        if loc is not None:
+            self.jmp(loc)
 
     def upload(self):
         if self.is_upload:
@@ -200,6 +212,12 @@ class DataForm(QWidget):
         ids, category_1, category_2, brand, goods_name, bar_code, cost_price, market_price, counter_price, _, _, _, _ = data
 
         weight = self.weight_edit.text()
+
+        # check if the goods is already exist
+        goods_list = await search_goods(goods_name)
+        if goods_list:
+            InfoBar.error(title="Error", content="商品已存在", parent=self)
+            return
 
         InfoBar.info(title="上传中", content="请稍等", parent=self)
 
@@ -241,13 +259,13 @@ class DataForm(QWidget):
 
             flag = True
             page = 1
-            size = 100
+            size = 50
             while flag:
                 vip_goods_list = await get_vip_goods_list(page=page, size=size, status=True)
                 for i in vip_goods_list:
                     detail = await get_goods_detail(i.get('Id'))
                     price = [detail.get('products', [])[0].get(
-                        f'vip{j}Price', None) for j in range(1, 5)]
+                        f'vip{j}Price', 0) for j in range(1, 5)]
                     if not all(price):
                         goods_details.append(detail)
                     else:
@@ -255,27 +273,20 @@ class DataForm(QWidget):
                         break
                 page += 1
 
-            index_of_goods_detail = []
-            for i in goods_details:
-                name = i.get('goods', {}).get('name', '')
-                if not self.table_data[self.table_data["商品名称"].str.contains(name, regex=False)].empty:
-                    index_of_goods_detail.append(
-                        self.table_data[self.table_data["商品名称"].str.contains(
-                            name, regex=False)].index[0]
-                    )
-
             tasks = []
-            for index, detail in zip(index_of_goods_detail, goods_details):
+            for detail in goods_details:
+                name = detail.get('goods', {}).get('name', '')
                 for product in detail.get('products', []):
+                    bar_code = product.get('specificationCode', '')
+                    price = self.get_price_by_goods_detail(name, bar_code)
+                    if price is None:
+                        loguru.logger.error(f"[{ids}] 商品 {name} {bar_code}的会员价未录入，未找到价格")
+                        continue
+
                     tasks.append(
                         set_vip_price(
                             product.get('id'),
-                            *list(self.table_data.loc[index][[
-                                "普通会员价格",
-                                "高级会员价",
-                                "VIP会员价",
-                                "至尊VIP会员价",
-                            ]])
+                            *price.tolist()
                         )
                     )
             await asyncio.gather(*tasks)
@@ -418,16 +429,30 @@ class DataForm(QWidget):
 
         return data
 
-    def get_price_by_goods_name(self, goods_name):
-        # find 品名 contains goods_name
-        row = self.table_data[self.table_data["商品名称"].str.contains(goods_name, regex=False)]
-        data = (self.table_data.loc[row.index[0]][[
+    def get_loc_by_goods_detail(self, good_name, good_code):
+        code = self.table_data["商品代码"].str.contains(good_code, regex=False).map(bool)
+        name = self.table_data["商品名称"].str.contains(good_name, regex=False).map(bool)
+
+        # both matches
+        matched = self.table_data[code & name]
+        if matched.empty or len(matched) > 1:
+            matched = self.table_data[code]
+            if matched.empty or len(matched) > 1:
+                matched = self.table_data[name]
+                if matched.empty or len(matched) > 1:
+                    return None
+        return matched.index[0]
+
+    def get_price_by_goods_detail(self, good_name, good_code):
+        loc = self.get_loc_by_goods_detail(good_name, good_code)
+        if loc is None:
+            return None
+        return self.table_data.loc[loc][[
             "普通会员价格",
             "高级会员价",
             "VIP会员价",
             "至尊VIP会员价",
-        ]])
-        return list(data)
+        ]]
 
     async def init_data(self):
         # flush category
@@ -603,7 +628,7 @@ class DataForm(QWidget):
 
         self.update_ui()
 
-        InfoBar.info(title="Success", content="已经切换到指定数据", parent=self)
+        InfoBar.info(title="Success", content=f"已经切换到数据 {idx}", parent=self)
 
 
 class CategoryDialog(QDialog):

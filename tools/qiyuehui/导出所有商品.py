@@ -1,5 +1,6 @@
-import sys
 import pathlib
+import sys
+
 import pandas as pd
 
 sys.path.append(
@@ -7,6 +8,7 @@ sys.path.append(
 )
 
 from upload.qiyuehui.apis import get_goods_list
+
 
 async def main():
     goods_list = []
@@ -20,12 +22,12 @@ async def main():
         if len(resp) < size:
             flag = False
         page += 1
-    
+
     df = pd.DataFrame(goods_list)
     df.to_excel('goods_list.xlsx', index=False)
 
 
 if __name__ == '__main__':
     import asyncio
-    asyncio.run(main())
 
+    asyncio.run(main())

@@ -60,6 +60,21 @@ async def add_vip_goods(goods_id: str):
     await post('https://api.zlqiyuehui.com/vender/goods/addVipGood', params=params)
 
 
+async def search_goods(name: str):
+    params = {
+        'page': 1,
+        'limit': 100,
+        'isOnSale': True,
+        'goodsNum': '',
+        'isVague': 0,
+        'name': name.strip(),
+    }
+
+    resp = await get('https://api.zlqiyuehui.com/vender/goods/list', params=params)
+
+    return resp.json().get('data', {}).get('items', [])
+
+
 async def get_vip_goods_list(page: int = 1, size: int = 10, status: bool = False):
     params = {
         'page': page,
@@ -75,6 +90,7 @@ async def get_vip_goods_list(page: int = 1, size: int = 10, status: bool = False
     data = response.json()
     return data.get('data', {}).get('goods', [])
 
+
 async def get_goods_list(page: int = 1, limit: int = 10):
     params = {
         'page': page,
@@ -85,9 +101,10 @@ async def get_goods_list(page: int = 1, limit: int = 10):
     }
 
     response = await get('https://api.zlqiyuehui.com/vender/goods/list', params=params)
-    
+
     data = response.json()
     return data.get('data', {}).get('items', [])
+
 
 async def get_goods_detail(product_id: str):
     params = {
@@ -99,12 +116,14 @@ async def get_goods_detail(product_id: str):
 
     return resp.json().get('data', {})
 
+
 async def delete_goods(goods_id: str):
     json_data = {
         'id': goods_id,
     }
 
     await post('https://api.zlqiyuehui.com/vender/goods/delete', json=json_data)
+
 
 async def set_vip_price(
         product_id: str,
@@ -209,7 +228,7 @@ async def login():
                     token.add(request.headers['x-token'])
 
         if not token:
-            loguru.logger.error('Waiting for token...')
+            loguru.logger.warning('Waiting for token...')
             time.sleep(1)
         else:
             break
@@ -220,3 +239,4 @@ async def login():
         f.write(token)
 
     update_token()
+    driver.quit()

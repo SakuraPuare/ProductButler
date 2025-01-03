@@ -1,10 +1,12 @@
-import sys
 import pathlib
+import sys
+
 import pandas as pd
 
 sys.path.append(
     str(pathlib.Path(__file__).parent.parent.parent)
 )
+
 
 async def main():
     df = pd.read_excel('goods_list.xlsx')
@@ -13,7 +15,7 @@ async def main():
 
     # Group by goodsSn and name, keep first occurrence
     duplicates = df[df.duplicated(subset=['goodsSn', 'name'], keep='first')]
-    
+
     # Get the IDs of duplicates to delete
     duplicate_ids = duplicates['id'].tolist()
 
@@ -30,6 +32,8 @@ async def main():
         except Exception as e:
             print(f"Error deleting goods ID {goods_id}: {str(e)}")
 
+
 if __name__ == '__main__':
     import asyncio
+
     asyncio.run(main())

@@ -1,5 +1,6 @@
-import sys
 import pathlib
+import sys
+
 import loguru
 
 sys.path.append(
@@ -8,7 +9,6 @@ sys.path.append(
 
 import pandas as pd
 import numpy
-
 
 table_headers = [
     "序号",
@@ -57,17 +57,18 @@ valid_headers = [
     "至尊VIP会员价",
 ]
 
-
-data = pd.read_excel(r'C:\Users\SakuraPuare\Desktop\HongLiTong\data\2025年1月3日\职友团上架明细表.xls', header=0, dtype={'商品代码': str})
+data = pd.read_excel(r'C:\Users\SakuraPuare\Desktop\HongLiTong\data\2025年1月3日\职友团上架明细表.xls', header=0,
+                     dtype={'商品代码': str})
 data.columns = table_headers
 data = data[valid_headers]
+
 
 def get_price_by_goods_detail(good_name, good_code):
     # find the index of the goods in data
     # Check for both name and code matches
     code = data["商品代码"].str.contains(good_code, regex=False).map(bool)
     name = data["商品名称"].str.contains(good_name, regex=False).map(bool)
-    
+
     # both matches
     matched = data[code & name]
     if matched.empty or len(matched) > 1:
@@ -82,6 +83,7 @@ def get_price_by_goods_detail(good_name, good_code):
         "VIP会员价",
         "至尊VIP会员价",
     ]]
+
 
 async def main():
     # 获取所有未录入会员价的商品
@@ -114,16 +116,16 @@ async def main():
                 # save the price to the goods
                 await set_vip_price(ids, *price_)
                 loguru.logger.info(f'{name} {ids}: \n{price} \n{price_}')
-        
+
         page += 1
 
         if len(vip_goods_list) < size:
             flag = False
-    
+
     pass
+
 
 if __name__ == '__main__':
     import asyncio
+
     asyncio.run(main())
-
-

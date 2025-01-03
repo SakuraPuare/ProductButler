@@ -2,8 +2,8 @@ import pathlib
 import re
 
 import httpx
-
 from files import managed_exists, managed_open
+
 from typehints import Category
 
 post_re = re.compile(r'主图')

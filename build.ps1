@@ -10,37 +10,24 @@ if (-not (Test-Path ".venv")) {
 }
 
 $uploadFolders = Get-ChildItem -Path "upload" -Directory | Where-Object { $_.Name -notmatch "__pycache__" } | Select-Object -ExpandProperty Name
-$hiddenImports = $uploadFolders | ForEach-Object { "--hiddenimport upload.$_.gui" }
+$hiddenImports = $uploadFolders | ForEach-Object { "--nofollow-import-to=upload.$_.gui" }
 
-$pyinstallerCommand = "pyinstaller gui.py " + `
-                      "--hiddenimport `"selenium.webdriver.chrome.service`" " + `
-                      "--hiddenimport `"selenium.webdriver.chrome.options`" " + `
-                      "--hiddenimport `"selenium.webdriver.firefox.service`" " + `
-                      "--hiddenimport `"selenium.webdriver.firefox.options`" " + `
-                      "--hiddenimport `"selenium.webdriver.edge.service`" " + `
-                      "--hiddenimport `"selenium.webdriver.edge.options`" " + `
-                      "--hiddenimport seleniumwire " + `
-                      "--hiddenimport seleniumwire.webdriver " + `
-                      "--hiddenimport dotenv " + `
-                      "--hiddenimport requests " + `
-                      "--hiddenimport packaging " + `
-                      "$($hiddenImports -join ' ') " + `
-                      "--add-data '.venv\Lib\site-packages\seleniumwire\ca.crt;seleniumwire' " + `
-                      "--add-data '.venv\Lib\site-packages\seleniumwire\ca.key;seleniumwire' " + `
-                      "--add-data 'webdriver_manager;webdriver_manager' " + `
-                      "--noconfirm"
+$nuitkaCommand = "python -m nuitka gui.py " + `
+                 "--standalone " + `
+                 "--enable-plugin=pyside6 " + `
+                 "--nofollow-import-to=selenium.webdriver.chrome.service " + `
+                 "--nofollow-import-to=selenium.webdriver.chrome.options " + `
+                 "--nofollow-import-to=selenium.webdriver.firefox.service " + `
+                 "--nofollow-import-to=selenium.webdriver.firefox.options " + `
+                 "--nofollow-import-to=selenium.webdriver.edge.service " + `
+                 "--nofollow-import-to=selenium.webdriver.edge.options " + `
+                 "--nofollow-import-to=seleniumwire " + `
+                 "--nofollow-import-to=seleniumwire.webdriver " + `
+                 "--nofollow-import-to=webdriver_manager.chrome " + `
+                 "--nofollow-import-to=webdriver_manager.firefox " + `
+                 "--nofollow-import-to=webdriver_manager.microsoft " + `
+                 "$($hiddenImports -join ' ') " + `
+                 "--include-data-dir=.venv/Lib/site-packages/seleniumwire=seleniumwire "
 
-Write-Host "Executing command: $pyinstallerCommand" -ForegroundColor Cyan
-Invoke-Expression $pyinstallerCommand
-
-# Remove previous dated zip files but keep version-numbered releases
-Get-ChildItem -Path "dist" -Filter "gui_*.zip" | Where-Object { $_.Name -match "gui_\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}\.zip" } | ForEach-Object {
-    Remove-Item $_.FullName
-    Write-Host "Removed previous archive: $($_.Name)" -ForegroundColor Yellow
-}
-
-
-$timestamp = Get-Date -Format "yyyy_MM_dd_HH_mm_ss"
-$zipPath = "dist/gui_$timestamp.zip"
-Compress-Archive -Path "dist/gui" -DestinationPath $zipPath
-Write-Host "Created archive: $zipPath" -ForegroundColor Green
+Write-Host "Executing command: $nuitkaCommand" -ForegroundColor Cyan
+Invoke-Expression $nuitkaCommand

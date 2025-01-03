@@ -20,10 +20,7 @@ selenium-wire
 blinker==1.7.0
 # webdriver-manager
 
-# from webdriver_manager
-python-dotenv
-requests
-packaging
+./webdriver_manager/
 
 cos-python-sdk-v5
 
