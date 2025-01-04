@@ -1,0 +1,63 @@
+name: Pack
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  pack:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pack project
+        run: |
+          $uploadFolders = Get-ChildItem -Path "upload" -Directory | Where-Object { $_.Name -notmatch "__pycache__" } | Select-Object -ExpandProperty Name
+          $hiddenImports = $uploadFolders | ForEach-Object { "--hiddenimport upload.$_.gui" }
+
+          $pyinstallerCommand = "pyinstaller gui.py " + `
+                                "--hiddenimport selenium.webdriver.chrome.service " + `
+                                "--hiddenimport selenium.webdriver.chrome.options " + `
+                                "--hiddenimport selenium.webdriver.firefox.service " + `
+                                "--hiddenimport selenium.webdriver.firefox.options " + `
+                                "--hiddenimport selenium.webdriver.edge.service " + `
+                                "--hiddenimport selenium.webdriver.edge.options " + `
+                                "--hiddenimport seleniumwire " + `
+                                "--hiddenimport seleniumwire.webdriver " + `
+                                "--hiddenimport webdriver_manager.chrome " + `
+                                "--hiddenimport webdriver_manager.firefox " + `
+                                "--hiddenimport webdriver_manager.microsoft " + `
+                                "$($hiddenImports -join ' ') " + `
+                                "--add-data '.venv\Lib\site-packages\seleniumwire\ca.crt;seleniumwire' " + `
+                                "--add-data '.venv\Lib\site-packages\seleniumwire\ca.key;seleniumwire' " + `
+                                "--noconfirm"
+
+          Write-Host "Executing command: $pyinstallerCommand" -ForegroundColor Cyan
+          Invoke-Expression $pyinstallerCommand
+          
+          $zipPath = "dist/gui_${{ github.sha }}.zip"
+          Compress-Archive -Path "dist/gui" -DestinationPath $zipPath
+        shell: powershell
+        
+      - name: Upload packed file
+        uses: actions/upload-artifact@v3
+        with:
+          name: gui_${{ github.sha }}.zip
+          path: dist/gui_*.zip
