@@ -26,12 +26,14 @@ jobs:
         
       - name: Install dependencies
         run: |
+          cd ${{ github.workspace }}
           .\.venv\Script\activate.ps1
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Pack project
         run: |
+          cd ${{ github.workspace }}
           .\.venv\Script\activate.ps1
           $uploadFolders = Get-ChildItem -Path "upload" -Directory | Where-Object { $_.Name -notmatch "__pycache__" } | Select-Object -ExpandProperty Name
           $hiddenImports = $uploadFolders | ForEach-Object { "--hiddenimport upload.$_.gui" }
