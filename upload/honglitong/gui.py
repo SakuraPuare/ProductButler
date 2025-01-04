@@ -31,7 +31,7 @@ from qfluentwidgets import (
 )
 
 from files import get_new_name, managed_exists, managed_open
-from utils import get_category_level_1, get_category_level_2, glob_file_in_folder
+from utils import folder_start_with, get_category_level_1, get_category_level_2, glob_file_in_folder
 from .apis import (
     add_goods,
     check_login,
@@ -453,7 +453,7 @@ class DataForm(QWidget):
 
         idx = self.table_data.loc[self.loc]["序号"]
         self.image_folder = [
-            i for i in self.image_folder_list if i.name.startswith(str(idx))
+            i for i in self.image_folder_list if folder_start_with(i, str(idx))
         ]
 
         if not self.image_folder:

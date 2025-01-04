@@ -33,7 +33,7 @@ from qfluentwidgets import (
 )
 
 from files import managed_exists, managed_open
-from utils import find_closest_string, glob_file_in_folder
+from utils import find_closest_string, folder_start_with, glob_file_in_folder
 from .apis import (
     add_vip_goods,
     create,
@@ -387,7 +387,7 @@ class DataForm(QWidget):
         idx = self.table_data.loc[self.loc]["序号"]
         goods_name = self.table_data.loc[self.loc]["商品名称"]
         self.image_folder = [
-            i for i in self.image_folder_list if i.name.startswith(str(idx))
+            i for i in self.image_folder_list if folder_start_with(i, str(idx))
         ]
 
         if not self.image_folder:

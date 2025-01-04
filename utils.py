@@ -71,6 +71,26 @@ def get_ratio(file_path: 'pathlib.Path'):
     img = Image.open(file_path)
     return img.height / img.width
 
+def folder_start_with(folder: 'pathlib.Path', string: str) -> bool:
+    name = folder.name.strip()
+    if name.startswith(string):
+        return True
+    
+    import configparser
+    # Check for desktop.ini and LocalizedResourceName
+    ini_path = folder / 'desktop.ini'
+    if ini_path.exists():
+        try:
+            config = configparser.ConfigParser()
+            config.read(ini_path, encoding='gbk')
+            localized_name = config['.ShellClassInfo']['LocalizedResourceName']
+            if localized_name := localized_name.strip():
+                if localized_name.startswith(string):
+                    return True
+        except:
+            return False
+    return False
+
 
 def glob_file_in_folder(folder: 'pathlib.Path') -> tuple[list, list]:
     import imagehash
