@@ -21,23 +21,18 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - name: Create virtual environment
-        run: python -m venv .venv
         
       - name: Install dependencies
         run: |
-          cd ${{ github.workspace }}
-          .\.venv\Script\activate.ps1
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Pack project
         run: |
-          cd ${{ github.workspace }}
-          .\.venv\Script\activate.ps1
           $uploadFolders = Get-ChildItem -Path "upload" -Directory | Where-Object { $_.Name -notmatch "__pycache__" } | Select-Object -ExpandProperty Name
           $hiddenImports = $uploadFolders | ForEach-Object { "--hiddenimport upload.$_.gui" }
-
+          $pythonPath = (Get-Command python).Source
+          $pythonLibsPath = Join-Path (Split-Path $pythonPath) 'Lib\site-packages'
           $pyinstallerCommand = "pyinstaller gui.py " + `
                                 "--hiddenimport selenium.webdriver.chrome.service " + `
                                 "--hiddenimport selenium.webdriver.chrome.options " + `
@@ -51,8 +46,8 @@ jobs:
                                 "--hiddenimport webdriver_manager.firefox " + `
                                 "--hiddenimport webdriver_manager.microsoft " + `
                                 "$($hiddenImports -join ' ') " + `
-                                "--add-data '.venv\Lib\site-packages\seleniumwire\ca.crt;seleniumwire' " + `
-                                "--add-data '.venv\Lib\site-packages\seleniumwire\ca.key;seleniumwire' " + `
+                                "--add-data '$pythonLibsPath\seleniumwire\ca.crt;seleniumwire' " + `
+                                "--add-data '$pythonLibsPath\seleniumwire\ca.key;seleniumwire' " + `
                                 "--noconfirm"
 
           Write-Host "Executing command: $pyinstallerCommand" -ForegroundColor Cyan
