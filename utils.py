@@ -30,9 +30,11 @@ def get_imagehash(byte: bytes) -> str:
 
     import imagehash
     from PIL import Image
-
-    img = Image.open(io.BytesIO(byte))
-    return str(imagehash.average_hash(img))
+    try:
+        img = Image.open(io.BytesIO(byte))
+        return str(imagehash.average_hash(img))
+    except Exception as e:
+        return None
 
 
 def custom_sort(file_path: 'pathlib.Path'):
@@ -110,12 +112,14 @@ def glob_file_in_folder(folder: 'pathlib.Path') -> tuple[list, list]:
         small_file_list, is_image_list) if is_img]
     hash_list = [get_imagehash(bytes_) for bytes_, is_img in zip(
         byte_list, is_image_list) if is_img]
-    # with ProcessPoolExecutor(max_workers=4) as executor:
-    #     hash_list = list(executor.map(get_imagehash, [bytes_ for bytes_, is_img in zip(byte_list, is_image_list) if is_img]))
+    
+    # 过滤掉hash为None的
+    image_list = [file for file, hash_ in zip(image_list, hash_list) if hash_]
+    hash_list = [hash_ for hash_ in hash_list if hash_]
 
     hash_map = {}
     for file, hash_ in zip(image_list, hash_list):
-        for hash_a, (existing_file, size) in hash_map.items():
+        for hash_a, (_, size) in hash_map.items():
             similarity = imagehash.hex_to_hash(
                 hash_a) - imagehash.hex_to_hash(hash_)
             if abs(similarity) < 5:
@@ -126,49 +130,56 @@ def glob_file_in_folder(folder: 'pathlib.Path') -> tuple[list, list]:
             hash_map[hash_] = (file, file_stats[file])
 
     file_set = {file for file, _ in hash_map.values()}
+    relative_set = {file.relative_to(folder) for file in file_set}
 
-    posts = {file for file in file_set if post_re.search(str(file))}
-    details = {file for file in file_set if detail_re.search(
+    # Use relative paths for pattern matching
+    posts = {file for file in relative_set if post_re.search(str(file))}
+    details = {file for file in relative_set if detail_re.search(
         str(file)) and file not in posts}
-    details.update(file for file in file_set if image_re.search(
+    details.update(file for file in relative_set if image_re.search(
         str(file)) and file not in posts)
 
     if not posts and details:
-        posts = file_set - details
+        posts = relative_set - details
     elif not details and posts:
-        details = file_set - posts
+        details = relative_set - posts
 
-    posts.update(file for file in file_set if is_square_image(
-        file) and file not in details)
-    if not details and posts:
-        details = file_set - posts
+    # Convert back to absolute paths for image operations
+    posts_abs = {folder / file for file in posts}
+    details_abs = {folder / file for file in details}
+    file_set_abs = {folder / file for file in relative_set}
+
+    posts_abs.update(file for file in file_set_abs if is_square_image(
+        file) and file not in details_abs)
+    if not details_abs and posts_abs:
+        details_abs = file_set_abs - posts_abs
 
     # filter height / width > 3 in details
-    if len(details) > 1:
-        details = {file for file in details if get_ratio(file) < 6}
+    if len(details_abs) > 1:
+        details_abs = {file for file in details_abs if get_ratio(file) < 6}
 
-    if not posts or not details:
+    if not posts_abs or not details_abs:
         large_file_list.sort(key=lambda file: file_stats[file])
-        if not posts:
-            posts = {file for file in large_file_list if is_square_image(
-                file) and file not in details}
+        if not posts_abs:
+            posts_abs = {file for file in large_file_list if is_square_image(
+                file) and file not in details_abs}
 
-        for post in posts:
+        for post in posts_abs:
             resize_to_large_bound(post)
 
-        if not details:
+        if not details_abs:
             large_file_list_not_squares = {
-                file for file in large_file_list if not is_square_image(file) and file not in posts}
+                file for file in large_file_list if not is_square_image(file) and file not in posts_abs}
             if len(large_file_list_not_squares) > 1:
-                details = {
+                details_abs = {
                     file for file in large_file_list_not_squares if get_ratio(file) < 6}
             else:
-                details = large_file_list_not_squares
+                details_abs = large_file_list_not_squares
 
-            for detail in details:
+            for detail in details_abs:
                 resize_to_large_bound(detail)
 
-    return sorted(posts, key=custom_sort), sorted(details, key=custom_sort)
+    return sorted(posts_abs, key=custom_sort), sorted(details_abs, key=custom_sort)
 
 
 def find_closest_string(target, string_list):

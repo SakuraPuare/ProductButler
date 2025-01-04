@@ -5,7 +5,9 @@ import pathlib
 import traceback
 from contextlib import contextmanager
 
-base_dir = pathlib.Path(__file__).parent / 'files'
+# 修改基础目录到用户目录下的.qiyuehui文件夹
+base_dir = pathlib.Path.home() / '.productbuilder'
+base_dir.mkdir(exist_ok=True, parents=True)  # 确保目录存在
 
 
 def get_new_name(name):
@@ -50,5 +52,8 @@ def managed_exists(name):
 
 
 if __name__ == "__main__":
+    # 测试代码
+    print(f"Base directory: {base_dir}")
     with managed_open("test.txt", "w") as f:
         f.write("Hello, world!")
+    print(f"File created at: {get_new_name('test.txt')}")

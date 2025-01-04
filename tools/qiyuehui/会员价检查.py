@@ -63,34 +63,14 @@ data.columns = table_headers
 data = data[valid_headers]
 
 
-def get_price_by_goods_detail(good_name, good_code):
-    # find the index of the goods in data
-    # Check for both name and code matches
-    code = data["商品代码"].str.contains(good_code, regex=False).map(bool)
-    name = data["商品名称"].str.contains(good_name, regex=False).map(bool)
-
-    # both matches
-    matched = data[code & name]
-    if matched.empty or len(matched) > 1:
-        matched = data[code]
-        if matched.empty or len(matched) > 1:
-            matched = data[name]
-            if matched.empty or len(matched) > 1:
-                return None
-    return data.loc[matched.index[0]][[
-        "普通会员价格",
-        "高级会员价",
-        "VIP会员价",
-        "至尊VIP会员价",
-    ]]
-
 
 async def main():
     # 获取所有未录入会员价的商品
     from upload.qiyuehui.apis import get_vip_goods_list, get_goods_detail, set_vip_price
+    from upload.qiyuehui.utils import get_price_by_goods_detail
 
     flag = True
-    page = 26
+    page = 27
     size = 100
     while flag:
         vip_goods_list = await get_vip_goods_list(page=page, size=size, status=True)
@@ -104,7 +84,7 @@ async def main():
             for j in detail.get('products', []):
                 ids = j.get('id', '')
                 bar_code = j.get('specificationCode', '')
-                price_ = get_price_by_goods_detail(name, bar_code)
+                price_ = get_price_by_goods_detail(data, name, bar_code)
 
                 if price_ is None:
                     continue

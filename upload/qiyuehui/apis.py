@@ -38,7 +38,7 @@ async def create(
             'wlTemplateId': '7a10debc-b76e-11ee-b3e4-525400154120',
             'wlTemplateType': 1,
             'name': name.strip(),
-            'goodsSn': goodsSn.replace(' ', ''),
+            'goodsSn': ''.join(goodsSn.split())[:60],
             'weight': "%.2f" % float(weight),
             'isOnSale': True,
         },
