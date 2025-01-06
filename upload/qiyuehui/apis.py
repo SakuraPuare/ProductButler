@@ -14,7 +14,7 @@ token_path = pathlib.Path('x-token.token')
 
 async def create(
         gallery: list[str],
-        category_list: list[str],
+        category_list: list[dict[str, str]],
         retailPrice: str,
         counterPrice: str,
         costPrice: str,

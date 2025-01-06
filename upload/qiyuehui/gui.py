@@ -131,9 +131,26 @@ class Main(QWidget):
             self.image_label.setText(f"已选择图片文件夹: {self.image_path}")
 
 
+async def check_goods_exists(data):
+    """检查商品是否已存在
+
+    Args:
+        data: 商品数据列表
+
+    Returns:
+        bool: 商品是否已存在
+    """
+    goods_list = await search_goods(data[4])  # 使用商品名称搜索
+    return bool(goods_list)
+
+
 class DataForm(QWidget):
     def __init__(self, path_data):
         super().__init__()
+        self.selected_category = None
+        self.category_label = None
+        self.category_dialog = None
+        self.category_button = None
         self.start_edit = LineEdit()
         self.end_edit = LineEdit()
         self.reset_button = PushButton(text="重置")
@@ -233,11 +250,11 @@ class DataForm(QWidget):
         """
         try:
             # 检查商品是否已存在
-            if await self.check_goods_exists(data):
-                loguru.logger.info(f"[{data[4]}] 商品已存在")
-                if show_error:
-                    InfoBar.error(title="Error", content="商品已存在", parent=self)
-                return False
+            # if await check_goods_exists(data):
+            #     loguru.logger.info(f"[{data[4]}] 商品已存在")
+            #     if show_error:
+            #         InfoBar.error(title="Error", content="商品已存在", parent=self)
+            #     return False
 
             # 检查图片是否存在且完整
             images_exist, image_folder = self.check_images_exists(int(ids), data[4])  # data[4]是商品名称
@@ -306,7 +323,7 @@ class DataForm(QWidget):
                 name = detail.get('goods', {}).get('name', '')
                 for product in detail.get('products', []):
                     bar_code = product.get('specificationCode', '')
-                    price = get_price_by_goods_detail(name, bar_code)
+                    price = get_price_by_goods_detail(self.table_data, name, bar_code)
                     if price is None:
                         loguru.logger.error(f"[{ids}] 商品 {name} {bar_code}的会员价未录入，未找到价格")
                         raise Exception(f"[{ids}] 商品 {name} {bar_code}的会员价未录入，未找到价格")
@@ -625,18 +642,6 @@ class DataForm(QWidget):
         InfoBar.info(title="Success", content="已经切换到下一条数据", parent=self)
         loguru.logger.info(f"当前序号: {self.table_data.loc[self.loc]['序号']}")
 
-    async def check_goods_exists(self, data):
-        """检查商品是否已存在
-        
-        Args:
-            data: 商品数据列表
-            
-        Returns:
-            bool: 商品是否已存在
-        """
-        goods_list = await search_goods(data[4])  # 使用商品名称搜索
-        return bool(goods_list)
-
     def check_images_exists(self, idx, goods_name):
         """检查商品图片是否存在且正常
         
@@ -680,7 +685,7 @@ class DataForm(QWidget):
             data = row[valid_headers].tolist()
             
             # 检查商品是否已存在
-            if await self.check_goods_exists(data):
+            if await check_goods_exists(data):
                 return False
                 
             # 检查图片是否存在
@@ -789,6 +794,8 @@ class CategoryDialog(QDialog):
         self.selected_categories = selected_categories
         self.checkboxes = []  # 存储所有的复选框
         self.checkbox_data = {}  # 存储复选框与数据的映射关系
+
+        self.price_category = []
         self.init_ui()
 
     def init_ui(self):
@@ -831,7 +838,9 @@ class CategoryDialog(QDialog):
 
                 # 添加分隔线
                 scroll_layout.addWidget(HorizontalSeparator())
-
+            else:
+                for child_name, child_data in category_data.get("children", {}).items():
+                    self.price_category.append(child_data["level"])
         # 添加按钮
         button_layout = QHBoxLayout()
         ok_button = PushButton("确定")
@@ -861,6 +870,10 @@ class CategoryDialog(QDialog):
                     "level": category_data["level"],
                     "name": category_data["name"]
                 })
+        for i in self.selected_categories:
+            if i.get("level") in self.price_category:
+                selected.append(i)
+        
         return selected
 
 

@@ -13,10 +13,13 @@ base_dir.mkdir(exist_ok=True, parents=True)  # 确保目录存在
 def get_new_name(name):
     stack = traceback.extract_stack()
     found = False
+    frame = None
     for frame in reversed(stack):
         if 'upload' in frame.filename:
             found = True
             break
+    if not found or not frame:
+        return pathlib.Path(name)
     file_path = pathlib.Path(frame.filename)
 
     save_path = copy.deepcopy(base_dir)
