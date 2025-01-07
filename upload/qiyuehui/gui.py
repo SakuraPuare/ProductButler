@@ -250,11 +250,11 @@ class DataForm(QWidget):
         """
         try:
             # 检查商品是否已存在
-            # if await check_goods_exists(data):
-            #     loguru.logger.info(f"[{data[4]}] 商品已存在")
-            #     if show_error:
-            #         InfoBar.error(title="Error", content="商品已存在", parent=self)
-            #     return False
+            if await check_goods_exists(data):
+                loguru.logger.info(f"[{data[4]}] 商品已存在")
+                if show_error:
+                    InfoBar.error(title="Error", content="商品已存在", parent=self)
+                return False
 
             # 检查图片是否存在且完整
             images_exist, image_folder = self.check_images_exists(int(ids), data[4])  # data[4]是商品名称
