@@ -63,7 +63,6 @@ data.columns = table_headers
 data = data[valid_headers]
 
 
-
 async def main():
     # 获取所有未录入会员价的商品
     from upload.qiyuehui.apis import get_vip_goods_list, get_goods_detail, set_vip_price
