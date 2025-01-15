@@ -73,11 +73,12 @@ def get_ratio(file_path: 'pathlib.Path'):
     img = Image.open(file_path)
     return img.height / img.width
 
+
 def folder_start_with(folder: 'pathlib.Path', string: str) -> bool:
     name = folder.name.strip()
     if name.startswith(string):
         return True
-    
+
     import configparser
     # Check for desktop.ini and LocalizedResourceName
     ini_path = folder / 'desktop.ini'
@@ -112,7 +113,7 @@ def glob_file_in_folder(folder: 'pathlib.Path') -> tuple[list, list]:
         small_file_list, is_image_list) if is_img]
     hash_list = [get_imagehash(bytes_) for bytes_, is_img in zip(
         byte_list, is_image_list) if is_img]
-    
+
     # 过滤掉hash为None的
     image_list = [file for file, hash_ in zip(image_list, hash_list) if hash_]
     hash_list = [hash_ for hash_ in hash_list if hash_]

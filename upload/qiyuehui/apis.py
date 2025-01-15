@@ -52,6 +52,12 @@ async def create(
     return resp
 
 
+async def update(goods_id: str, data: dict):
+    resp = await post(f'https://api.zlqiyuehui.com/vender/goods/update', json=data)
+
+    return resp
+
+
 async def add_vip_goods(goods_id: str):
     params = {
         'goodsId': goods_id,

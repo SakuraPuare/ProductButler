@@ -32,7 +32,6 @@ from qfluentwidgets import (
     FlowLayout
 )
 
-from files import managed_exists, managed_open
 from utils import find_closest_string, folder_start_with, glob_file_in_folder
 from .apis import (
     add_vip_goods,
@@ -182,7 +181,7 @@ class DataForm(QWidget):
         self.start = None
         self.is_upload = False
         self.stop_upload = False
-        
+
         self.file_name, self.image_path = path_data
 
         self.category_widget = None
@@ -257,15 +256,12 @@ class DataForm(QWidget):
                 return False
 
             # 检查图片是否存在且完整
-            images_exist, image_folder = self.check_images_exists(int(ids), data[4])  # data[4]是商品名称
+            images_exist, _, self.posts, self.details = self.check_images_exists(int(ids), data[4])  # data[4]是商品名称
             if not images_exist:
                 loguru.logger.error(f"[{data[4]}] 未找到商品图片或图片不完整")
                 if show_error:
                     InfoBar.error(title="Error", content="未找到商品图片或图片不完整", parent=self)
                 return False
-
-            # 获取已验证过的图片路径
-            self.posts, self.details = glob_file_in_folder(image_folder)
 
             # 并行上传所有图片
             posts_url = await upload_files(list(self.posts)[:10])
@@ -470,20 +466,19 @@ class DataForm(QWidget):
         for i in self.details:
             i = str(i)
             # 先用idx分隔
-            item_name = i.split(str(int(idx)))[-1][1:] # 还要去掉一个 /
+            item_name = i.split(str(int(idx)))[-1][1:]  # 还要去掉一个 /
             # 再用文件夹名分隔
             item_name = item_name.split(self.image_folder.name)[-1][1:]
             self.detail_url_list.addItem(item_name)
 
     @staticmethod
     def read_table_data(file_name) -> DataFrame:
-        df = pd.read_excel(file_name, header=0)
-
+        df = pd.read_excel(file_name, header=0, dtype={'商品代码': str})
         df.columns = table_headers
         data = df[
             valid_headers
         ]
-
+        data = data.dropna()
         # 重新设置索引
         data.index = range(len(data))
 
@@ -642,7 +637,7 @@ class DataForm(QWidget):
         InfoBar.info(title="Success", content="已经切换到下一条数据", parent=self)
         loguru.logger.info(f"当前序号: {self.table_data.loc[self.loc]['序号']}")
 
-    def check_images_exists(self, idx, goods_name):
+    def check_images_exists(self, idx, goods_name) -> tuple[bool, pathlib.Path, list, list]:
         """检查商品图片是否存在且正常
         
         Args:
@@ -655,21 +650,21 @@ class DataForm(QWidget):
         image_folder = [
             i for i in self.image_folder_list if folder_start_with(i, str(idx))
         ]
-        
+
         if not image_folder:
-            return False, None
-            
+            return False, None, None, None
+
         # 找到最匹配的文件夹
         image_folder = image_folder[
             find_closest_string(goods_name, [i.name for i in image_folder])
         ]
-        
+
         # 检查是否有主图和详情图
         posts, details = glob_file_in_folder(image_folder)
         if not posts or not details:
-            return False, None
-            
-        return True, image_folder
+            return False, None, None, None
+
+        return True, image_folder, posts, details
 
     async def check_loc_valid(self, loc):
         """检查指定位置的商品是否可以跳转
@@ -683,18 +678,18 @@ class DataForm(QWidget):
         try:
             row = self.table_data.loc[loc]
             data = row[valid_headers].tolist()
-            
+
             # 检查商品是否已存在
             if await check_goods_exists(data):
                 return False
-                
+
             # 检查图片是否存在
-            images_exist, _ = self.check_images_exists(row["序号"], row["商品名称"])
+            images_exist, _, _, _ = self.check_images_exists(row["序号"], row["商品名称"])
             if not images_exist:
                 return False
-                
+
             return True
-            
+
         except Exception as e:
             return False
 
@@ -718,11 +713,11 @@ class DataForm(QWidget):
         if self.is_upload:
             InfoBar.error(title="Error", content="正在上传中，请稍等", parent=self)
             return
-        
+
         if not self.start_edit.text() or not self.end_edit.text():
             InfoBar.error(title="Error", content="请输入开始序号和结束序号", parent=self)
             return
-        
+
         asyncio.ensure_future(self._batch_upload())
 
     async def _batch_upload(self):
@@ -731,50 +726,50 @@ class DataForm(QWidget):
         self.stop_upload = False
         start_idx = int(self.start_edit.text())
         end_idx = int(self.end_edit.text())
-        
+
         error_list = []
         success_count = 0
-        
+
         InfoBar.info(title="批量上传开始", content=f"开始序号: {start_idx}, 结束序号: {end_idx}", parent=self)
-        
+
         try:
             for idx in range(start_idx, end_idx + 1):
                 if self.stop_upload:
                     error_list.append("用户手动停止上传")
                     break
-                    
+
                 try:
                     # 跳转到指定序号
                     self.jmp(idx)
                     if self.loc == -1:
                         error_list.append(f"序号 {idx} 未找到对应数据")
                         continue
-                        
+
                     # 执行上传逻辑
                     data = [self.table_widget.item(0, i).text() for i in range(self.table_widget.columnCount())]
                     ids = data[0]
 
                     weight = self.weight_edit.text()
-                    
+
                     if await self._do_upload(ids, data, weight, show_error=False):
                         success_count += 1
                         loguru.logger.info(f"[{ids}] 上传成功")
-                    
+
                 except Exception as e:
                     error_msg = f"序号 {idx} 上传失败: {str(e)}"
                     error_list.append(error_msg)
                     loguru.logger.error(error_msg)
                     continue
-                    
+
         finally:
             self.is_upload = False
             self.stop_upload = False
-            
+
         # 显示最终结果
         result_message = f"批量上传{'完成' if not self.stop_upload else '已停止'}\n成功: {success_count}条\n失败: {len(error_list)}条"
         if error_list:
             result_message += "\n\n失败详情:\n" + "\n".join(error_list)
-        
+
         InfoBar.info(title="批量上传结果", content=result_message, parent=self)
         loguru.logger.info(result_message)
 
@@ -873,7 +868,7 @@ class CategoryDialog(QDialog):
         for i in self.selected_categories:
             if i.get("level") in self.price_category:
                 selected.append(i)
-        
+
         return selected
 
 
@@ -923,7 +918,6 @@ valid_headers = [
     "VIP会员价",
     "至尊VIP会员价",
 ]
-
 if __name__ == "__main__":
     from qasync import QEventLoop
 

@@ -1,8 +1,10 @@
+import asyncio
 import base64
 import concurrent.futures
 import pathlib
+import random
+import threading
 import time
-import asyncio
 
 import loguru
 from qcloud_cos import CosConfig, CosS3Client
@@ -17,12 +19,17 @@ cors_credential = None
 client = None
 executor = concurrent.futures.ThreadPoolExecutor()  # 创建线程池
 
+lock = threading.Lock()
+
+
 def sync_upload_file(filename: pathlib.Path) -> str:
     """同步上传单个文件"""
     global cors_credential, client
-    
+
+    with lock:
+        url_name = str(int(time.time() * 1000)) + ("%02d" % random.randint(1, 50)) + filename.suffix
+
     try:
-        url_name = str(int(time.time() * 1000)) + filename.suffix
 
         response = client.upload_file(
             Bucket=bucket,
@@ -38,6 +45,7 @@ def sync_upload_file(filename: pathlib.Path) -> str:
     except Exception as e:
         loguru.logger.error(f'[UPLOAD ERROR] {filename}: {str(e)}')
         raise e
+
 
 async def upload_file(filename: pathlib.Path) -> str:
     """异步上传单个文件的包装器"""
@@ -58,6 +66,7 @@ async def upload_file(filename: pathlib.Path) -> str:
     # 使用线程池执行同步上传
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(executor, sync_upload_file, filename)
+
 
 async def upload_files(files: list[pathlib.Path]) -> list[str]:
     """批量上传文件"""
