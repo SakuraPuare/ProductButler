@@ -169,12 +169,7 @@ files/
 
 .vscode/
 
-black_list.txt
-category.json
-verify.jpg
-
-cookies.json
-*.token
+*.txt
 
 *.xls
 *.xlsx

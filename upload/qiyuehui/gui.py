@@ -2,10 +2,11 @@ import asyncio
 import pathlib
 import sys
 import time
+import tqdm
 
 import loguru
 import pandas as pd
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -45,6 +46,7 @@ from .apis import (
     set_vip_price,
 )
 from .cos import upload_files
+from .headers import table_headers, valid_headers
 from .utils import get_keyword_category, get_loc_by_goods_detail, get_price_category, get_price_by_goods_detail
 
 
@@ -111,6 +113,7 @@ class Main(QWidget):
         await login()
 
         self.data_form = DataForm((self.file_name, self.image_path))
+        self.data_form.back_signal.connect(self.show)  # 连接返回信号
         self.close()
         self.data_form.show()
 
@@ -144,6 +147,8 @@ async def check_goods_exists(data):
 
 
 class DataForm(QWidget):
+    back_signal = Signal()  # 添加返回信号
+
     def __init__(self, path_data):
         super().__init__()
         self.selected_category = None
@@ -152,6 +157,8 @@ class DataForm(QWidget):
         self.category_button = None
         self.start_edit = LineEdit()
         self.end_edit = LineEdit()
+
+        self.back_button = PushButton(text="返回")  # 添加返回按钮
         self.reset_button = PushButton(text="重置")
         self.load_button = PushButton(text="加载")
         self.jump_button = PushButton(text="跳转到")
@@ -253,7 +260,8 @@ class DataForm(QWidget):
                 loguru.logger.info(f"[{data[4]}] 商品已存在")
                 if show_error:
                     InfoBar.error(title="Error", content="商品已存在", parent=self)
-                return False
+                # return False
+                raise Exception("商品已存在")
 
             # 检查图片是否存在且完整
             images_exist, _, self.posts, self.details = self.check_images_exists(int(ids), data[4])  # data[4]是商品名称
@@ -261,7 +269,8 @@ class DataForm(QWidget):
                 loguru.logger.error(f"[{data[4]}] 未找到商品图片或图片不完整")
                 if show_error:
                     InfoBar.error(title="Error", content="未找到商品图片或图片不完整", parent=self)
-                return False
+                # return False
+                raise Exception("未找到商品图片或图片不完整")
 
             # 并行上传所有图片
             posts_url = await upload_files(list(self.posts)[:10])
@@ -269,6 +278,15 @@ class DataForm(QWidget):
 
             # 解析数据
             _, _, _, _, goods_name, bar_code, cost_price, market_price, counter_price, _, _, _, _ = data
+
+            stop_word = [
+                '下架',
+                '停产',
+                '停用',
+            ]
+
+            if any(word in goods_name for word in stop_word):
+                raise Exception("商品已下架或停产")
 
             # 创建商品
             await create(
@@ -325,9 +343,11 @@ class DataForm(QWidget):
                         raise Exception(f"[{ids}] 商品 {name} {bar_code}的会员价未录入，未找到价格")
 
                     tasks.append(
-                        set_vip_price(
-                            product.get('id'),
-                            *price.tolist()
+                        asyncio.create_task(
+                            set_vip_price(
+                                product.get('id'),
+                                *price.tolist()
+                            )
                         )
                     )
             await asyncio.gather(*tasks)
@@ -478,7 +498,6 @@ class DataForm(QWidget):
         data = df[
             valid_headers
         ]
-        data = data.dropna()
         # 重新设置索引
         data.index = range(len(data))
 
@@ -516,6 +535,9 @@ class DataForm(QWidget):
         self.batch_upload_button.clicked.connect(self.batch_upload)
         self.stop_upload_button.clicked.connect(self.stop_batch_upload)
 
+        self.back_button.clicked.connect(self.go_back)  # 连接返回按钮点击事件
+
+        header_layout.addWidget(self.back_button)
         header_layout.addWidget(self.reset_button)
         header_layout.addWidget(self.load_button)
         header_layout.addWidget(self.upload_button)
@@ -733,7 +755,7 @@ class DataForm(QWidget):
         InfoBar.info(title="批量上传开始", content=f"开始序号: {start_idx}, 结束序号: {end_idx}", parent=self)
 
         try:
-            for idx in range(start_idx, end_idx + 1):
+            for idx in tqdm(range(start_idx, end_idx + 1)):
                 if self.stop_upload:
                     error_list.append("用户手动停止上传")
                     break
@@ -780,6 +802,11 @@ class DataForm(QWidget):
         self.stop_upload = True
         InfoBar.info(title="停止上传", content="正在停止上传...", parent=self)
         loguru.logger.info("用户手动停止上传")
+
+    def go_back(self):
+        """返回到Main界面"""
+        self.back_signal.emit()  # 发送返回信号
+        self.close()
 
 
 class CategoryDialog(QDialog):
@@ -872,52 +899,6 @@ class CategoryDialog(QDialog):
         return selected
 
 
-table_headers = [
-    "序号",
-    "一级分类",
-    "二级分类",
-    "品牌",
-    "商品名称",
-    "商品代码",
-    "含税集采价",
-    "含税代发价",
-    "市场价",
-    "职友团平台价",
-    "最终利润率",
-    "标准利润率",
-    "利润完成比",
-    "利润线",
-    "满足价格",
-    "等级满足比",
-    "普通会员价格",
-    "利润线",
-    "满足价格",
-    "等级满足比",
-    "高级会员价",
-    "利润线",
-    "满足价格",
-    "等级满足比",
-    "VIP会员价",
-    "利润线",
-    "满足价格",
-    "等级满足比",
-    "至尊VIP会员价",
-]
-valid_headers = [
-    "序号",
-    "一级分类",
-    "二级分类",
-    "品牌",
-    "商品名称",
-    "商品代码",
-    "含税代发价",
-    "市场价",
-    "职友团平台价",
-    "普通会员价格",
-    "高级会员价",
-    "VIP会员价",
-    "至尊VIP会员价",
-]
 if __name__ == "__main__":
     from qasync import QEventLoop
 

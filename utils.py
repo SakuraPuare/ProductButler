@@ -74,11 +74,16 @@ def get_ratio(file_path: 'pathlib.Path'):
     return img.height / img.width
 
 
-def folder_start_with(folder: 'pathlib.Path', string: str) -> bool:
-    name = folder.name.strip()
-    if name.startswith(string):
-        return True
+def is_start_with_number(string: str, number: int) -> bool:
+    import re
+    match = re.match(r'^[0-9]+', string)
 
+    if match:
+        return int(match.group(0)) == number
+    return False
+
+
+def get_folder_actual_name(folder: 'pathlib.Path'):
     import configparser
     # Check for desktop.ini and LocalizedResourceName
     ini_path = folder / 'desktop.ini'
@@ -88,10 +93,36 @@ def folder_start_with(folder: 'pathlib.Path', string: str) -> bool:
             config.read(ini_path, encoding='gbk')
             localized_name = config['.ShellClassInfo']['LocalizedResourceName']
             if localized_name := localized_name.strip():
-                if localized_name.startswith(string):
-                    return True
-        except:
-            return False
+                return localized_name
+        except Exception as e:
+            pass
+
+    return folder.name.strip()
+
+
+def folder_start_with(folder: 'pathlib.Path', string: str) -> bool:
+    name = folder.name.strip()
+    if is_start_with_number(name, int(string)):
+        return True
+
+    # 如果开头不是数字，则检查desktop.ini
+    import re
+    match = re.match(r'^[0-9]+', name)
+
+    if not match:
+        import configparser
+        # Check for desktop.ini and LocalizedResourceName
+        ini_path = folder / 'desktop.ini'
+        if ini_path.exists():
+            try:
+                config = configparser.ConfigParser()
+                config.read(ini_path, encoding='gbk')
+                localized_name = config['.ShellClassInfo']['LocalizedResourceName']
+                if localized_name := localized_name.strip():
+                    if is_start_with_number(localized_name, int(string)):
+                        return True
+            except:
+                return False
     return False
 
 
@@ -236,3 +267,21 @@ def get_category_level_2(category: 'Category', level_1: str, string: str):
     items = list(category[level_1]["children"].keys())
     idx = find_closest_string(string, items)
     return items[idx], category[level_1]["children"][items[idx]].get("level")
+
+
+async def until_success(func, *args, **kwargs):
+    import loguru
+    import asyncio
+
+    if asyncio.iscoroutinefunction(func):
+        while True:
+            try:
+                return await func(*args, **kwargs)
+            except Exception as e:
+                loguru.logger.error(e)
+    else:
+        while True:
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                loguru.logger.error(e)

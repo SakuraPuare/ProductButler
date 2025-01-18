@@ -57,7 +57,7 @@ valid_headers = [
     "至尊VIP会员价",
 ]
 
-data = pd.read_excel(r'C:\Users\SakuraPuare\Desktop\HongLiTong\data\2025年1月3日\职友团上架明细表.xls', header=0,
+data = pd.read_excel(r'C:\Users\SakuraPuare\Desktop\HongLiTong\data\qiyuehui\职友团上架明细表.xls', header=0,
                      dtype={'商品代码': str})
 data.columns = table_headers
 data = data[valid_headers]
@@ -69,7 +69,7 @@ async def main():
     from upload.qiyuehui.utils import get_price_by_goods_detail
 
     flag = True
-    page = 27
+    page = 0
     size = 100
     while flag:
         vip_goods_list = await get_vip_goods_list(page=page, size=size, status=True)

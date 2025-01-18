@@ -15,7 +15,7 @@ async def main():
 
     flag = True
     page = 1
-    size = 1000
+    size = 2000
     while flag:
         resp = await get_goods_list(page, size)
         goods_list.extend(resp)

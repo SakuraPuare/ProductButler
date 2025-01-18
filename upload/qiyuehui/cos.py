@@ -30,7 +30,6 @@ def sync_upload_file(filename: pathlib.Path) -> str:
         url_name = str(int(time.time() * 1000)) + ("%02d" % random.randint(1, 50)) + filename.suffix
 
     try:
-
         response = client.upload_file(
             Bucket=bucket,
             LocalFilePath=filename.absolute(),

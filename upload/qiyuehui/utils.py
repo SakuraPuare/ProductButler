@@ -61,97 +61,64 @@ def get_loc_by_goods_detail(table_data, good_name, good_code):
     Returns:
         int|None: 找到的位置索引,未找到返回None
     """
-    good_code = good_code.strip()
-    good_name = good_name.strip()
+    import pandas as pd
+    if pd.isna(good_name):
+        good_name = ''
+    if pd.isna(good_code):
+        good_code = ''
 
-    # 定义替换表
-    replace_map = {
-        '＆': '&',
-        '\xa0': ' ',
-        ' ': '',
-        '\n': ''
-    }
+    import re
+    good_name = re.sub(r'\s+', '', good_name)
+    good_code = re.sub(r'\s+', '', good_code)
+
+    # 先把表格里的空格和换行符去掉，不要修改原始数据
+    table_data["商品代码"] = table_data["商品代码"].str.replace(r'\s+', '', regex=True)
+    table_data["商品名称"] = table_data["商品名称"].str.replace(r'\s+', '', regex=True)
+
+    # 筛选出非空数据
+    code_not_na = table_data["商品代码"].notna() & (table_data["商品代码"] != '')
+    name_not_na = table_data["商品名称"].notna() & (table_data["商品名称"] != '')
 
     def try_match(name, code):
-        code_match = table_data["商品代码"].str.contains(code, regex=False).map(bool)
-        name_match = table_data["商品名称"].str.contains(name, regex=False).map(bool)
+        # both match
+        code_match = code_not_na & (table_data["商品代码"].str.strip() == code)
+        name_equal = name_not_na & (table_data["商品名称"].str.strip() == name)
+        name_contain = name_not_na & (table_data["商品名称"].str.contains(name, regex=False))
+        equal_match = code_match & name_equal
+        contain_match = code_match & name_contain
 
-        # both matches
-        matched = table_data[code_match & name_match]
-        if matched.empty:
-            matched = table_data[code_match]
-            if matched.empty or len(matched) > 1:
-                matched = table_data[name_match]
-                if matched.empty:
-                    return None
-                elif len(matched) > 1:
-                    # Check for exact name matches ignoring whitespace
-                    exact_matches = matched[matched["商品名称"].str.strip() == good_name.strip()]
-                    if not exact_matches.empty:
-                        return exact_matches.index[0]
-                    return None
-        elif len(matched) > 1:
-            # Check for exact matches ignoring whitespace
-            exact_matches = matched[matched["商品名称"].str.strip() == good_name.strip()]
-            if not exact_matches.empty:
-                return exact_matches.index[0]
+        # 如果匹配结果大于1，或匹配结果为0，则尝试匹配code或name
+        if equal_match.sum() == 1:
+            return table_data[equal_match].index[0]
 
-            # Try code match
-            matched = table_data[code_match]
-            if matched.empty or len(matched) > 1:
-                # Try name match
-                matched = table_data[name_match]
-                if matched.empty:
-                    return None
-                elif len(matched) > 1:
-                    # Check for exact name matches ignoring whitespace
-                    exact_matches = matched[matched["商品名称"].str.strip() == good_name.strip()]
-                    if not exact_matches.empty:
-                        return exact_matches.index[0]
-                    return None
+        if contain_match.sum() == 1:
+            return table_data[contain_match].index[0]
 
-        return matched.index[0]
+        if equal_match.sum() == 1:
+            return table_data[equal_match].index[0]
+        if code_match.sum() == 1:
+            return table_data[code_match].index[0]
+        if name_contain.sum() == 1:
+            return table_data[name_contain].index[0]
+        return None
 
-    # 第一次尝试匹配
     result = try_match(good_name, good_code)
     if result is not None:
         return result
 
-    import loguru
-    loguru.logger.warning(f"[{good_name}] 第一次匹配失败，尝试替换一些字符")
+    # 定义替换表
+    replace_map = {
+        '＆': '&',
+        '\xa0': '',
+    }
 
-    # 使用短占位符替换字符，减少替换开销
-    PLACEHOLDER = "\xff"
+    for k, v in replace_map.items():
+        good_name = good_name.replace(k, v)
+        good_code = good_code.replace(k, v)
 
-    # 逐个检查替换表中的字符对
-    for char, replacement in replace_map.items():
-        if good_name.count(char) == 0:
-            continue
-
-        # 对输入的good_name替换左边字符(key)为占位符
-        test_name = good_name.replace(char, PLACEHOLDER).replace(replacement, PLACEHOLDER)
-
-        # 创建临时的name_match条件，替换右边字符(value)为占位符
-        name_match = table_data["商品名称"] \
-            .str.replace(replacement, PLACEHOLDER, regex=False) \
-            .str.contains(test_name, regex=False)
-        matched = table_data[name_match]
-
-        if not matched.empty:
-            if len(matched) == 1:
-                loguru.logger.warning(
-                    f"[{good_name}] 替换字符对 '{char}'/'{replacement}' 后匹配 {matched.iloc[0]['商品名称']} 成功，请检查是否正确")
-                return matched.index[0]
-            else:
-                # 检查精确匹配
-                exact_matches = matched[matched["商品名称"].str.replace(replacement, PLACEHOLDER,
-                                                                        regex=False).str.strip() == test_name.strip()]
-                if not exact_matches.empty:
-                    loguru.logger.warning(
-                        f"[{good_name}] 替换字符对 '{char}'/'{replacement}' 后精确匹配 {exact_matches.iloc[0]['商品名称']} 成功，请检查是否正确")
-                    return exact_matches.index[0]
-
-    loguru.logger.warning(f"[{good_name}] 所有字符对替换匹配失败")
+    result = try_match(good_name, good_code)
+    if result is not None:
+        return result
     return None
 
 

@@ -82,3 +82,21 @@ async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -
         loguru.logger.error(e)
         time.sleep(1)
         return await base_get(url, params, *args, **kwargs)
+
+
+async def get_until_success(url, *args, **kwargs):
+    while True:
+        try:
+            return await get(url, *args, **kwargs)
+        except Exception as e:
+            loguru.logger.error(e)
+            time.sleep(1)
+
+
+async def post_until_success(url, *args, **kwargs):
+    while True:
+        try:
+            return await post(url, *args, **kwargs)
+        except Exception as e:
+            loguru.logger.error(e)
+            time.sleep(1)

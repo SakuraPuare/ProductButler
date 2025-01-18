@@ -4,6 +4,7 @@ aiofiles
 imagehash
 pillow
 beautifulsoup4
+tqdm
 
 pandas
 openpyxl

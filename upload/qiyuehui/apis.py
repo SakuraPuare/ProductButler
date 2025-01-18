@@ -6,7 +6,7 @@ import time
 import loguru
 
 from files import managed_exists, managed_open
-from .https import get, post, update_token
+from .https import get, get_until_success, post, update_token
 from .utils import fmt_desc
 
 token_path = pathlib.Path('x-token.token')
@@ -155,7 +155,7 @@ async def set_vip_price(
 
 
 async def get_category():
-    response = await get('https://api.zlqiyuehui.com/vender/goods/catAndBrand')
+    response = await get_until_success('https://api.zlqiyuehui.com/vender/goods/catAndBrand')
 
     category_list = response.json().get('data', {}).get(
         'categoryList', [])
@@ -186,7 +186,7 @@ coscredential_url = base64.b64decode(
 
 
 async def get_cors_credentials() -> dict:
-    response = await get(coscredential_url)
+    response = await get_until_success(coscredential_url)
     data = response.json().get('data', '')
 
     if not data:
@@ -197,7 +197,7 @@ async def get_cors_credentials() -> dict:
 
 async def check_login():
     try:
-        resp = await get('https://api.zlqiyuehui.com/vender/order/getRefundNum')
+        await get('https://api.zlqiyuehui.com/vender/order/getRefundNum')
     except Exception as e:
         return False
     return True
