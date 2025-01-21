@@ -18,17 +18,21 @@ bucket = base64.b64decode(bucket_as_base64).decode('utf-8')
 cors_credential = None
 client = None
 executor = concurrent.futures.ThreadPoolExecutor()  # 创建线程池
-
 lock = threading.Lock()
+
+name_set = set()
 
 
 def sync_upload_file(filename: pathlib.Path) -> str:
     """同步上传单个文件"""
-    global cors_credential, client
+    global cors_credential, client, name_set
 
     with lock:
-        url_name = str(int(time.time() * 1000)) + ("%02d" % random.randint(1, 50)) + filename.suffix
-
+        url_name = str(int(time.time() * 1000)) + ("%02d" % random.randint(1, 99)) + filename.suffix
+        while url_name in name_set:
+            url_name = str(int(time.time() * 1000)) + ("%02d" % random.randint(1, 99)) + filename.suffix
+        name_set.add(url_name)
+        
     try:
         response = client.upload_file(
             Bucket=bucket,

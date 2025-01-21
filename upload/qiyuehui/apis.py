@@ -23,6 +23,9 @@ async def create(
         goodsSn: str,
         weight: str
 ):
+    if str(goodsSn) == 'nan':
+        goodsSn = ''
+
     data = {
         'goods': {
             'clearCustom': None,
@@ -52,7 +55,7 @@ async def create(
     return resp
 
 
-async def update(goods_id: str, data: dict):
+async def update(data: dict):
     resp = await post(f'https://api.zlqiyuehui.com/vender/goods/update', json=data)
 
     return resp

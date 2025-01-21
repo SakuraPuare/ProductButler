@@ -11,6 +11,7 @@ import threading
 import concurrent.futures
 from tqdm.auto import tqdm
 from loguru import logger
+import loguru
 
 logger.remove()
 logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True)
@@ -22,7 +23,7 @@ from upload.qiyuehui.apis import get_category, get_goods_detail, update
 from upload.qiyuehui.headers import table_headers, valid_headers
 
 
-def need_to_reupload(detail):
+def is_need_to_reupload(detail):
     if detail['goods']['gallery'] is None:
         return True
     gallery = detail['goods']['gallery']
@@ -55,8 +56,7 @@ def find_image_folder(line):
         if len(image_folder) == 0:
             raise AssertionError(f'{line["ids"]} 没有找到对应的图片文件夹')
         elif len(image_folder) > 1:
-            image_folder = image_folder[find_closest_string(
-                line['name'], [i.name for i in image_folder])]
+            image_folder = image_folder[find_closest_string(line['name'], [i for i in image_folder])]
         else:
             image_folder = image_folder[0]
 
@@ -70,55 +70,57 @@ def find_image_folder(line):
 async def process_single_item(line, category, image_folder):
     """处理单个商品的函数"""
 
-    if str(line['ids']) in black_list or str(line['ids']) in notfound:
-        return False
+    # if str(line['ids']) in black_list or str(line['ids']) in notfound:
+    #     return False
 
     try:
-        if image_folder is None:
-            raise TypeError(f'{line["ids"]} 没有找到对应的图片文件夹')
         detail = await get_goods_detail(line['id'])
         good = goods.loc[line['ids']]
         cate = []
         cate.extend(get_price_category(category, float(good['含税代发价'])))
         cate.extend(get_price_category(category, float(good['市场价'])))
-        cate.extend(get_keyword_category(category, good['品牌']))
-        cate.extend(get_keyword_category(category, good['商品名称']))
-        cate.extend(get_keyword_category(category, good['一级分类']))
-        cate.extend(get_keyword_category(category, good['二级分类']))
+        cate.extend(get_keyword_category(category, f"{good['品牌']} {good['商品名称']} {good['一级分类']} {good['二级分类']} "))
         cate = list({cat['level']: cat for cat in cate}.values())
-        l = sorted([i.get('level') for i in cate])
+        l = [i.get('level') for i in cate]
+        n = [i.get('name') for i in cate]
+
         fmt_cate = ','.join(l)
+        fmt_name = ','.join(n)
 
-        if need_to_reupload(detail):
-            posts, details = glob_file_in_folder(image_folder)
-            if len(posts) == 0 or len(details) == 0:
-                raise AssertionError(f'{line["ids"]} 没有找到对应的图片文件夹')
+        changed = True
 
+        # if is_need_to_reupload(detail):
+        #     if image_folder is None:
+        #         raise TypeError(f'{line["ids"]} 没有找到对应的图片文件夹')
+        #     posts, details = glob_file_in_folder(image_folder)
+        #     if len(posts) == 0 or len(details) == 0:
+        #         raise AssertionError(f'{line["ids"]} 没有找到对应的图片文件夹')
+
+        #     detail['goods']['categoryId'] = fmt_cate
+        #     detail['goods']['categoryName'] = fmt_name
+            
+        #     posts_url = await upload_files(list(posts)[:10])
+        #     details_url = await upload_files(details)
+
+        #     desc_ = fmt_desc(details_url)
+        #     detail['goods']['desc'] = desc_
+        #     detail['goods']['gallery'] = posts_url
+        #     logger.info(f'{line["ids"]} 图片更新成功')
+        if sorted(detail['goods']['categoryId'].split(',')) != sorted(l):
             detail['goods']['categoryId'] = fmt_cate
-            posts_url = await upload_files(list(posts)[:10])
-            details_url = await upload_files(details)
+            detail['goods']['categoryName'] = fmt_name
+            logger.info(f'{line["ids"]} 分类更新成功')
+            if detail['goods']['goodsSn'] == 'nan':
+                detail['goods']['goodsSn'] = ''
+                logger.info(f'{line["ids"]} 商品编码更新成功')
+        else:
+            changed = False
 
-            desc_ = fmt_desc(details_url)
-            detail['goods']['desc'] = desc_
-            detail['goods']['gallery'] = posts_url
-
+        if changed:
             # 单独处理update的重试逻辑
             for retry in range(3):  # 最多重试2次
                 try:
-                    await update(line['id'], detail)
-                    break
-                except Exception as e:
-                    if retry == 2:  # 最后一次重试也失败
-                        raise e
-                    logger.warning(f'更新失败,第{retry + 1}次重试: {e}')
-                    continue
-
-        elif sorted(detail['goods']['categoryId'].split(',')) != l:
-            detail['goods']['categoryId'] = fmt_cate
-            # 单独处理update的重试逻辑
-            for retry in range(3):  # 最多重试2次
-                try:
-                    await update(line['id'], detail)
+                    await update(detail)
                     break
                 except Exception as e:
                     if retry == 2:  # 最后一次重试也失败
@@ -154,17 +156,20 @@ async def main():
 
     # 先用多线程处理所有图片文件夹查找
     image_data = []
-    with concurrent.futures.ProcessPoolExecutor(max_workers=16) as executor:
-        futures = [executor.submit(find_image_folder, line[1]) for line in rows]
-        with tqdm(total=len(futures), desc="查找图片") as pbar:
-            for f, row in zip(concurrent.futures.as_completed(futures), rows):
-                try:
-                    image_folder = f.result()
-                    image_data.append((row[1], image_folder))
-                except Exception as e:
-                    logger.error(f"查找图片失败: {e}")
-                finally:
-                    pbar.update(1)
+    for line in rows:
+        image_folder = find_image_folder(line[1])
+        image_data.append((line[1], image_folder))
+    # with concurrent.futures.ProcessPoolExecutor(max_workers=16) as executor:
+    #     futures = [executor.submit(find_image_folder, line[1]) for line in rows]
+    #     with tqdm(total=len(futures), desc="查找图片") as pbar:
+    #         for f, row in zip(concurrent.futures.as_completed(futures), rows):
+    #             try:
+    #                 image_folder = f.result()
+    #                 image_data.append((row[1], image_folder))
+    #             except Exception as e:
+    #                 logger.error(f"查找图片失败: {e}")
+    #             finally:
+    #                 pbar.update(1)
 
     # 使用批量方式并行处理商品更新
     results = []
@@ -185,18 +190,27 @@ black_list = []
 
 if __name__ == "__main__":
     # cache()
+    data = pd.read_excel('goods_list_with_ids.xlsx')
 
     import asyncio
 
-    with open('black_list.txt', 'r') as f:
-        black_list = f.read().splitlines()
-        black_list = set(black_list)
+    # with open('black_list.txt', 'r') as f:
+    #     black_list = [i for i in f.read().splitlines() if i]
+    #     black_list = set(black_list)
 
-    with open('notfound.txt', 'r') as f:
-        notfound = f.read().splitlines()
-        notfound = set(notfound)
+    # with open('notfound.txt', 'r') as f:
+    #     notfound = [i for i in f.read().splitlines() if i]
+    #     notfound = set(notfound)
 
-    data = pd.read_excel('goods_list_with_ids.xlsx')
+    with open('need_to_reupload.txt', 'r') as f:
+        need_to_reupload = [int(i) for i in f.read().splitlines() if i]
+        need_to_reupload = set(need_to_reupload)
+    
+    # filter ids in black_list
+    data = data[data['ids'].isin(need_to_reupload)]
+    # data = data[~data['ids'].isin(map(int, black_list))]
+    # data = data[~data['ids'].isin(map(int, notfound))]
+
     # drop sharePic column
     data.drop(columns=['sharePic'], inplace=True)
 
@@ -204,9 +218,6 @@ if __name__ == "__main__":
     data.dropna(subset=['ids'], inplace=True)
     data['ids'] = data['ids'].astype(int)
 
-    # filter ids in black_list
-    data = data[~data['ids'].isin(map(int, black_list))]
-    data = data[~data['ids'].isin(map(int, notfound))]
 
     goods = pd.read_excel(
         r'C:\Users\SakuraPuare\Desktop\HongLiTong\data\qiyuehui\职友团上架明细表.xls', dtype={'商品代码': str})

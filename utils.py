@@ -6,8 +6,8 @@ from files import managed_exists, managed_open
 
 from typehints import Category
 
-post_re = re.compile(r'主图')
-detail_re = re.compile(r'详情')
+post_re = re.compile(r'主(图|页)')
+detail_re = re.compile(r'详情(图|页)')
 image_re = re.compile(r'images')
 
 large_bound = 1024 * 1024 * 2

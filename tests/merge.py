@@ -37,7 +37,7 @@ def sort_by_range(ranges: list[str]) -> list[str]:
 
 
 if __name__ == '__main__':
-    with open('missing_goods.txt', 'r') as f:
+    with open('need_to_reupload.txt', 'r') as f:
         l = [int(line.strip()) for line in f.readlines()]
     l = list(set(l))
     print(sort_by_range(merge_to_str(l)))

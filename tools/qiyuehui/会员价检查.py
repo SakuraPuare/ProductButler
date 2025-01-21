@@ -10,52 +10,7 @@ sys.path.append(
 import pandas as pd
 import numpy
 
-table_headers = [
-    "序号",
-    "一级分类",
-    "二级分类",
-    "品牌",
-    "商品名称",
-    "商品代码",
-    "含税集采价",
-    "含税代发价",
-    "市场价",
-    "职友团平台价",
-    "最终利润率",
-    "标准利润率",
-    "利润完成比",
-    "利润线",
-    "满足价格",
-    "等级满足比",
-    "普通会员价格",
-    "利润线",
-    "满足价格",
-    "等级满足比",
-    "高级会员价",
-    "利润线",
-    "满足价格",
-    "等级满足比",
-    "VIP会员价",
-    "利润线",
-    "满足价格",
-    "等级满足比",
-    "至尊VIP会员价",
-]
-valid_headers = [
-    "序号",
-    "一级分类",
-    "二级分类",
-    "品牌",
-    "商品名称",
-    "商品代码",
-    "含税代发价",
-    "市场价",
-    "职友团平台价",
-    "普通会员价格",
-    "高级会员价",
-    "VIP会员价",
-    "至尊VIP会员价",
-]
+from upload.qiyuehui.headers import table_headers, valid_headers
 
 data = pd.read_excel(r'C:\Users\SakuraPuare\Desktop\HongLiTong\data\qiyuehui\职友团上架明细表.xls', header=0,
                      dtype={'商品代码': str})

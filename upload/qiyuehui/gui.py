@@ -2,7 +2,7 @@ import asyncio
 import pathlib
 import sys
 import time
-import tqdm
+from tqdm.auto import tqdm
 
 import loguru
 import pandas as pd
