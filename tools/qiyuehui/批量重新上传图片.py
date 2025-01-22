@@ -67,7 +67,7 @@ def find_image_folder(line):
                 f.write(f'{line["ids"]}\n')
 
 
-async def process_single_item(line, category, image_folder):
+async def process_single_item(line, category, image_folder=None):
     """处理单个商品的函数"""
 
     # if str(line['ids']) in black_list or str(line['ids']) in notfound:
@@ -75,7 +75,7 @@ async def process_single_item(line, category, image_folder):
 
     try:
         detail = await get_goods_detail(line['id'])
-        good = goods.loc[line['ids']]
+        good = goods.loc[line['loc']]
         cate = []
         cate.extend(get_price_category(category, float(good['含税代发价'])))
         cate.extend(get_price_category(category, float(good['市场价'])))
@@ -155,10 +155,10 @@ async def main():
     rows = list(data.iterrows())
 
     # 先用多线程处理所有图片文件夹查找
-    image_data = []
-    for line in rows:
-        image_folder = find_image_folder(line[1])
-        image_data.append((line[1], image_folder))
+    # image_data = []
+    # for line in rows:
+    #     image_folder = find_image_folder(line[1])
+    #     image_data.append((line[1], image_folder))
     # with concurrent.futures.ProcessPoolExecutor(max_workers=16) as executor:
     #     futures = [executor.submit(find_image_folder, line[1]) for line in rows]
     #     with tqdm(total=len(futures), desc="查找图片") as pbar:
@@ -173,11 +173,11 @@ async def main():
 
     # 使用批量方式并行处理商品更新
     results = []
-    for i in tqdm(range(0, len(image_data), 10), desc="处理商品"):
-        batch = image_data[i:i + 10]
+    for i in tqdm(range(0, len(rows), 10), desc="处理商品"):
+        batch = rows[i:i + 10]
         batch_results = await asyncio.gather(*[
-            process_single_item(line, category, image_folder)
-            for line, image_folder in batch
+            process_single_item(line, category)
+            for idx, line in batch
         ])
         results.extend(batch_results)
 

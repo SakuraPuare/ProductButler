@@ -68,7 +68,13 @@ def category_need_to_reupload(detail):
 async def process_single_item(line, category):
     """处理单个商品的函数"""
 
-    detail = await get_goods_detail(line['id'])
+    # retry 3 times
+    for i in range(3):
+        try:
+            detail = await get_goods_detail(line['id'])
+            break
+        except Exception as e:
+            logger.error(f'{line["ids"]} 获取商品详情失败: {e}')
 
     if category_need_to_reupload(detail):
         with open('need_to_reupload.txt', 'a') as f:
@@ -108,6 +114,13 @@ if __name__ == "__main__":
             not_need_to_reupload = set(not_need_to_reupload)
 
             data = data[~data['ids'].isin(not_need_to_reupload)]
+    
+    if os.path.exists('need_to_reupload.txt'):
+        with open('need_to_reupload.txt', 'r') as f:
+            need_to_reupload = [int(i) for i in f.read().splitlines() if i]
+            need_to_reupload = set(need_to_reupload)
+
+            data = data[~data['ids'].isin(need_to_reupload)]
 
 
     goods = pd.read_excel(

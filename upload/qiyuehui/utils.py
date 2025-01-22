@@ -20,7 +20,7 @@ def get_price_category(category: 'Category', price: float) -> list[dict]:
         numbers = re.findall(r'\d+', k)
         if len(numbers) == 2:
             low, high = map(int, numbers)
-            if low <= price <= high:
+            if low <= price < high:
                 ret.append(v)
         elif len(numbers) == 1:
             numbers = int(numbers[0])

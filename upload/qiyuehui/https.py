@@ -81,7 +81,7 @@ async def get(url, params: dict = None, headers: dict = None, *args, **kwargs) -
     except Exception as e:
         loguru.logger.error(e)
         time.sleep(1)
-        return await base_get(url, params, *args, **kwargs)
+        return await base_get(url, params=params, headers=new_headers, *args, **kwargs)
 
 
 async def get_until_success(url, *args, **kwargs):
