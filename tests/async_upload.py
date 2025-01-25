@@ -1,13 +1,14 @@
 import asyncio
-import pathlib
-import time
+import concurrent.futures
 import random
 import threading
-import concurrent.futures
+import time
+
 lock = threading.Lock()
 executor = concurrent.futures.ThreadPoolExecutor()  # 创建线程池
 
 name_set = set()
+
 
 def sync_upload_file(filename: str) -> str:
     """同步上传单个文件"""
@@ -37,8 +38,6 @@ def test_url():
     else:
         print(f'{len(url)} == {len(url_set)}')
 
-    
-
 
 async def upload_files() -> list[str]:
     """批量上传文件"""
@@ -53,6 +52,7 @@ async def upload_files() -> list[str]:
 
 if __name__ == '__main__':
     import os
+
     os.remove('test_url.txt')
     asyncio.run(upload_files())
     test_url()

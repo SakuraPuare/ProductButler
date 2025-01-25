@@ -2,7 +2,6 @@ import asyncio
 import pathlib
 import sys
 import time
-from tqdm.auto import tqdm
 
 import loguru
 import pandas as pd
@@ -32,6 +31,7 @@ from qfluentwidgets import (
     HorizontalSeparator,
     FlowLayout
 )
+from tqdm.auto import tqdm
 
 from utils import find_closest_string, folder_start_with, glob_file_in_folder
 from .apis import (

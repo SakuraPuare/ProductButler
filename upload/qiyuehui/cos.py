@@ -32,7 +32,7 @@ def sync_upload_file(filename: pathlib.Path) -> str:
         while url_name in name_set:
             url_name = str(int(time.time() * 1000)) + ("%02d" % random.randint(1, 99)) + filename.suffix
         name_set.add(url_name)
-        
+
     try:
         response = client.upload_file(
             Bucket=bucket,

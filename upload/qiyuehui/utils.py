@@ -71,7 +71,6 @@ def get_loc_by_goods_detail(table_data, good_name, good_code):
 
     import re
 
-
     # 删除所有空格和换行符
     empty_replace = re.compile(r'\s+')
     good_name = empty_replace.sub('', good_name)
@@ -90,7 +89,7 @@ def get_loc_by_goods_detail(table_data, good_name, good_code):
         # Filter out NA values first
         valid_codes = table_data["商品代码"].notna()
         valid_names = table_data["商品名称"].notna()
-        
+
         # Match on non-NA values
         code_match = replace_space(table_data["商品代码"]).str.contains(code, regex=False).map(bool) & valid_codes
         name_match = replace_space(table_data["商品名称"]).str.contains(name, regex=False).map(bool) & valid_names
@@ -100,7 +99,7 @@ def get_loc_by_goods_detail(table_data, good_name, good_code):
         if matched.empty:
             matched = valid_codes[code_match]
             if matched.empty or len(matched) > 1:
-                matched = valid_names[name_match] 
+                matched = valid_names[name_match]
                 if matched.empty:
                     return None
                 elif len(matched) > 1:
@@ -148,7 +147,7 @@ def get_loc_by_goods_detail(table_data, good_name, good_code):
         result = try_match(test_name, good_code)
         if result is not None:
             return result
-        
+
         loguru.logger.warning(f"[{good_name}] 替换字符对 '{char}'/'{replacement}' 后匹配失败")
 
     # 逐个检查替换表中的字符对
@@ -173,7 +172,7 @@ def get_loc_by_goods_detail(table_data, good_name, good_code):
             else:
                 # 检查精确匹配
                 exact_matches = matched[matched["商品名称"].str.replace(replacement, "",
-                                                                   regex=False).str.strip() == test_name.strip()]
+                                                                        regex=False).str.strip() == test_name.strip()]
                 if not exact_matches.empty:
                     loguru.logger.warning(
                         f"[{good_name}] 删除字符对 '{char}'/'{replacement}' 后精确匹配 {exact_matches.iloc[0]['商品名称']} 成功，请检查是否正确")
@@ -181,7 +180,6 @@ def get_loc_by_goods_detail(table_data, good_name, good_code):
 
     loguru.logger.warning(f"[{good_name}] 所有字符对替换匹配失败")
     return None
-
 
 
 def get_price_by_goods_detail(table_data, good_name, good_code):

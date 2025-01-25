@@ -8,17 +8,14 @@ sys.path.append(
 )
 
 import threading
-import concurrent.futures
 from tqdm.auto import tqdm
 from loguru import logger
-import loguru
 
 logger.remove()
 logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True)
 
-from upload.qiyuehui.utils import fmt_desc, get_keyword_category, get_price_category
-from utils import find_closest_string, get_folder_actual_name, glob_file_in_folder
-from upload.qiyuehui.cos import upload_files
+from upload.qiyuehui.utils import get_keyword_category, get_price_category
+from utils import find_closest_string, get_folder_actual_name
 from upload.qiyuehui.apis import get_category, get_goods_detail, update
 from upload.qiyuehui.headers import table_headers, valid_headers
 
@@ -79,7 +76,8 @@ async def process_single_item(line, category, image_folder=None):
         cate = []
         cate.extend(get_price_category(category, float(good['含税代发价'])))
         cate.extend(get_price_category(category, float(good['市场价'])))
-        cate.extend(get_keyword_category(category, f"{good['品牌']} {good['商品名称']} {good['一级分类']} {good['二级分类']} "))
+        cate.extend(
+            get_keyword_category(category, f"{good['品牌']} {good['商品名称']} {good['一级分类']} {good['二级分类']} "))
         cate = list({cat['level']: cat for cat in cate}.values())
         l = [i.get('level') for i in cate]
         n = [i.get('name') for i in cate]
@@ -98,7 +96,7 @@ async def process_single_item(line, category, image_folder=None):
 
         #     detail['goods']['categoryId'] = fmt_cate
         #     detail['goods']['categoryName'] = fmt_name
-            
+
         #     posts_url = await upload_files(list(posts)[:10])
         #     details_url = await upload_files(details)
 
@@ -205,7 +203,7 @@ if __name__ == "__main__":
     with open('need_to_reupload.txt', 'r') as f:
         need_to_reupload = [int(i) for i in f.read().splitlines() if i]
         need_to_reupload = set(need_to_reupload)
-    
+
     # filter ids in black_list
     data = data[data['ids'].isin(need_to_reupload)]
     # data = data[~data['ids'].isin(map(int, black_list))]
@@ -217,7 +215,6 @@ if __name__ == "__main__":
     # drop ids nan
     data.dropna(subset=['ids'], inplace=True)
     data['ids'] = data['ids'].astype(int)
-
 
     goods = pd.read_excel(
         r'C:\Users\SakuraPuare\Desktop\HongLiTong\data\qiyuehui\职友团上架明细表.xls', dtype={'商品代码': str})
